@@ -1,10 +1,12 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { initializeDatabase, closeDatabase } from './database/database.js';
 import { registerDatabaseIPCHandlers } from './database/ipc.js';
 import { registerStorageIPCHandlers } from './storage/storageIpc.js';
 import { registerBackupIPCHandlers } from './storage/backupIpc.js';
+import { registerUpdateIPCHandlers } from './storage/updateIpc.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let mainWindow = null;
@@ -59,6 +61,7 @@ app.whenReady().then(async () => {
     registerStorageIPCHandlers();
     createWindow();
     registerBackupIPCHandlers(mainWindow);
+    registerUpdateIPCHandlers(mainWindow);
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -72,4 +75,15 @@ app.on('window-all-closed', () => {
 });
 app.on('will-quit', () => {
     closeDatabase();
+});
+ipcMain.handle('get-app-version', async () => {
+    try {
+        const packageJsonPath = path.join(app.getAppPath(), 'package.json');
+        const pkg = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
+        return pkg.version || '1.0.0';
+    }
+    catch (err) {
+        console.error('[Main] Failed to get app version:', err);
+        return '1.0.0';
+    }
 });

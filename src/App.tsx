@@ -13,6 +13,7 @@ import ExpenseAccounts from './pages/ExpenseAccounts';
 import LinkedAccounts from './pages/LinkedAccounts';
 import SystemPreferences from './pages/SystemPreferences';
 import BackupRestore from './pages/BackupRestore';
+import Splash from './pages/Splash';
 
 export default function App() {
   const [adminPassword, setAdminPassword] = useState('admin');
@@ -20,6 +21,7 @@ export default function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Splash />} />
         <Route path="/login" element={<Login adminPassword={adminPassword} />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/company-profile" element={<CompanyProfile />} />
@@ -36,7 +38,7 @@ export default function App() {
         <Route path="/linked-accounts" element={<LinkedAccounts />} />
         <Route path="/system-preferences" element={<SystemPreferences />} />
         <Route path="/backup-restore" element={<BackupRestore />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
