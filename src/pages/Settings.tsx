@@ -282,6 +282,10 @@ export default function Settings() {
                       navigate('/customers');
                     } else if (card.title === 'Employees') {
                       navigate('/employees');
+                    } else if (card.title === 'Chart of Accounts') {
+                      navigate('/chart-of-accounts');
+                    } else if (card.title === 'Expense Accounts') {
+                      navigate('/expense-accounts');
                     }
                   }}
                   className="bg-white border border-[#E5E7EB] rounded-[10px] p-7 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:shadow-[0_4px_12px_0_rgba(0,0,0,0.08)] hover:bg-[#EEF5FF] hover:border-[#2F80ED]/30 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[165px]"
