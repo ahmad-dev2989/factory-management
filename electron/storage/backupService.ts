@@ -80,11 +80,22 @@ export async function createBackupZip(
   }
 
   // 3. Construct Metadata object
+  let appVersion = '1.0.0';
+  try {
+    const packageJsonPath = path.join(app.getAppPath(), 'package.json');
+    const pkg = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
+    if (pkg && pkg.version) {
+      appVersion = pkg.version;
+    }
+  } catch (versionErr) {
+    console.warn('[Backup] Failed to read package.json version, using fallback:', versionErr);
+  }
+
   const now = new Date();
   const dateString = now.toISOString().replace('T', ' ').substring(0, 16);
   const metadata: BackupMetadata = {
     backupDate: dateString,
-    appVersion: '1.0.0', // package version fallback
+    appVersion,
     databaseVersion: dbVersion,
     backupFormatVersion: '1.0',
     os: os.platform(),

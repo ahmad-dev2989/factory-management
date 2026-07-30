@@ -68,7 +68,12 @@
       "shortcutName": "Factory Management & Accounting System",
       "installerIcon": "public/app-icons/icon.ico",
       "uninstallerIcon": "public/app-icons/icon.ico",
-      "uninstallDisplayName": "Factory Management & Accounting System"
+      "uninstallDisplayName": "Factory Management & Accounting System",
+      "include": "build/installer.nsh"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://example.com/updates"
     }
   }
 }
