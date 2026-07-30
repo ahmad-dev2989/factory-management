@@ -11,6 +11,7 @@ import Employees from './pages/Employees';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import ExpenseAccounts from './pages/ExpenseAccounts';
 import LinkedAccounts from './pages/LinkedAccounts';
+import SystemPreferences from './pages/SystemPreferences';
 
 export default function App() {
   const [adminPassword, setAdminPassword] = useState('admin');
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
         <Route path="/expense-accounts" element={<ExpenseAccounts />} />
         <Route path="/linked-accounts" element={<LinkedAccounts />} />
+        <Route path="/system-preferences" element={<SystemPreferences />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
