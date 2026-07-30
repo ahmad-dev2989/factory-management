@@ -10,6 +10,7 @@ import Customers from './pages/Customers';
 import Employees from './pages/Employees';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import ExpenseAccounts from './pages/ExpenseAccounts';
+import LinkedAccounts from './pages/LinkedAccounts';
 
 export default function App() {
   const [adminPassword, setAdminPassword] = useState('admin');
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/employees" element={<Employees />} />
         <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
         <Route path="/expense-accounts" element={<ExpenseAccounts />} />
+        <Route path="/linked-accounts" element={<LinkedAccounts />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
