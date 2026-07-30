@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight } from 'lucide-react';
 
@@ -40,6 +40,53 @@ export default function CompanyProfile() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
+
+  const [logoPath, setLogoPath] = useState<string | null>(null); // Relative path in SQLite
+
+  useEffect(() => {
+    const fetchCompany = async () => {
+      try {
+        const res = await (window as any).electron.invoke('db-query', 'SELECT * FROM company WHERE id = 1');
+        if (res && res[0]) {
+          const c = res[0];
+          setFormData({
+            companyName: c.company_name,
+            businessName: c.business_name || '',
+            ownerName: c.owner_name || '',
+            phone: c.phone || '',
+            altPhone: c.alt_phone || '',
+            email: c.email || '',
+            website: c.website || '',
+            address1: c.address1 || '',
+            address2: c.address2 || '',
+            city: c.city || '',
+            province: c.province || '',
+            country: c.country || '',
+            postalCode: c.postal_code || '',
+            ntn: c.ntn || '',
+            strn: c.strn || '',
+            regNumber: c.reg_number || '',
+            businessType: c.business_type || 'Manufacturer',
+            invoicePrefix: c.invoice_prefix || 'INV-',
+            quotationPrefix: c.quotation_prefix || 'QTN-',
+            currency: c.currency || 'PKR',
+            decimalPlaces: c.decimal_places || '2',
+            invoiceFooter: c.invoice_footer || ''
+          });
+          setLogoPath(c.logo_path || null);
+          if (c.logo_path) {
+            const dataUrl = await (window as any).electron.invoke('file-read', c.logo_path);
+            if (dataUrl && !dataUrl.error) {
+              setLogo(dataUrl);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[CompanyProfile] Failed to load company profile:', err);
+      }
+    };
+    fetchCompany();
+  }, []);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,10 +133,63 @@ export default function CompanyProfile() {
       return;
     }
 
-    setErrors({});
-    setSuccessMessage('Company information saved successfully.');
-    // Clear message after 4 seconds
-    setTimeout(() => setSuccessMessage(''), 4000);
+    const saveCompany = async () => {
+      try {
+        let finalLogoPath = logoPath;
+
+        if (logo === null) {
+          // Logo was deleted by user
+          if (logoPath) {
+            await (window as any).electron.invoke('file-delete', logoPath);
+          }
+          finalLogoPath = null;
+        } else if (logo.startsWith('data:')) {
+          // New file uploaded
+          const fileRes = await (window as any).electron.invoke(
+            'file-save',
+            'Company/Logo',
+            'logo.png',
+            logo
+          );
+          if (fileRes && !fileRes.error) {
+            finalLogoPath = fileRes.relativePath;
+            // Delete old file to prevent bloat
+            if (logoPath) {
+              await (window as any).electron.invoke('file-delete', logoPath);
+            }
+          } else {
+            console.error('[CompanyProfile] Failed to save logo to disk:', fileRes?.message);
+          }
+        }
+
+        await (window as any).electron.invoke(
+          'db-query',
+          `INSERT OR REPLACE INTO company (
+            id, company_name, business_name, owner_name, phone, alt_phone, email, website,
+            address1, address2, city, province, country, postal_code, ntn, strn,
+            reg_number, business_type, invoice_prefix, quotation_prefix, currency,
+            decimal_places, invoice_footer, logo_path
+          ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            formData.companyName.trim(), formData.businessName.trim(), formData.ownerName.trim(),
+            formData.phone.trim(), formData.altPhone.trim(), formData.email.trim(), formData.website.trim(),
+            formData.address1.trim(), formData.address2.trim(), formData.city.trim(), formData.province.trim(),
+            formData.country.trim(), formData.postalCode.trim(), formData.ntn.trim(), formData.strn.trim(),
+            formData.regNumber.trim(), formData.businessType, formData.invoicePrefix.trim(),
+            formData.quotationPrefix.trim(), formData.currency, formData.decimalPlaces,
+            formData.invoiceFooter.trim(), finalLogoPath
+          ]
+        );
+
+        setLogoPath(finalLogoPath);
+        setErrors({});
+        setSuccessMessage('Company information saved successfully.');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } catch (err) {
+        console.error('[CompanyProfile] Failed to save company profile:', err);
+      }
+    };
+    saveCompany();
   };
 
   return (

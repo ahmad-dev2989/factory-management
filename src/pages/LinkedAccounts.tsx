@@ -150,6 +150,20 @@ export default function LinkedAccounts() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [successMessage, setSuccessMessage] = useState('');
 
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await (window as any).electron.invoke('db-query', "SELECT value FROM app_settings WHERE key = 'linked_accounts_config'");
+                if (res && res[0] && res[0].value) {
+                    setConfig(JSON.parse(res[0].value));
+                }
+            } catch (err) {
+                console.error('[LinkedAccounts] Failed to load config:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
+
     const handleUpdate = (field: keyof typeof defaultConfig, value: string) => {
         setConfig(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
@@ -175,16 +189,41 @@ export default function LinkedAccounts() {
             return;
         }
 
-        setErrors({});
-        setSuccessMessage('Linked accounts updated successfully.');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => setSuccessMessage(''), 4000);
+        const saveConfig = async () => {
+            try {
+                await (window as any).electron.invoke(
+                    'db-query',
+                    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('linked_accounts_config', ?)",
+                    [JSON.stringify(config)]
+                );
+                setErrors({});
+                setSuccessMessage('Linked accounts updated successfully.');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[LinkedAccounts] Failed to save config:', err);
+            }
+        };
+        saveConfig();
     };
 
     const handleReset = () => {
-        setConfig(defaultConfig);
-        setErrors({});
-        setSuccessMessage('');
+        const resetConfig = async () => {
+            try {
+                await (window as any).electron.invoke(
+                    'db-query',
+                    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('linked_accounts_config', ?)",
+                    [JSON.stringify(defaultConfig)]
+                );
+                setConfig(defaultConfig);
+                setErrors({});
+                setSuccessMessage('Linked accounts reset to defaults.');
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[LinkedAccounts] Failed to reset config:', err);
+            }
+        };
+        resetConfig();
     };
 
     return (

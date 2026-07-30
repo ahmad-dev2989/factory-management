@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle } from 'lucide-react';
 
@@ -32,29 +32,44 @@ export default function Customers() {
     };
 
     // Initial Data State
-    const [customers, setCustomers] = useState<CustomerItem[]>([
-        {
-            id: 1,
-            companyName: 'TechCorp Solutions',
-            contactPerson: 'Ali Raza',
-            phone: '0300-1234567',
-            whatsapp: '0300-1234567',
-            email: 'ali.raza@techcorp.com',
-            address1: 'Plot 45, Industrial Area',
-            address2: 'Sector G',
-            city: 'Lahore',
-            province: 'Punjab',
-            country: 'Pakistan',
-            postalCode: '54000',
-            ntn: '1234567-8',
-            businessType: 'Corporate',
-            creditLimit: 500000,
-            openingBalance: 15000,
-            currentBalance: 15000,
-            status: 'Active',
-            notes: 'Premium corporate client',
+    const [customers, setCustomers] = useState<CustomerItem[]>([]);
+
+    const fetchCustomers = async () => {
+        try {
+            const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM customers');
+            if (raw && !raw.error) {
+                const mapped = raw.map((c: any) => ({
+                    id: c.id,
+                    companyName: c.company_name,
+                    contactPerson: c.contact_person || '',
+                    phone: c.phone || '',
+                    whatsapp: c.whatsapp || '',
+                    email: c.email || '',
+                    address1: c.address1 || '',
+                    address2: c.address2 || '',
+                    city: c.city || '',
+                    province: c.province || '',
+                    country: c.country || '',
+                    postalCode: c.postal_code || '',
+                    ntn: c.ntn || '',
+                    businessType: c.business_type || '',
+                    creditLimit: Number(c.credit_limit),
+                    openingBalance: Number(c.opening_balance),
+                    currentBalance: Number(c.current_balance),
+                    status: c.status,
+                    notes: c.notes || ''
+                }));
+                setCustomers(mapped);
+            }
+        } catch (err) {
+            console.error('[Customers] Failed to fetch customers:', err);
         }
-    ]);
+    };
+
+    useEffect(() => {
+        fetchCustomers();
+    }, []);
+
 
     const [searchQuery, setSearchQuery] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -187,71 +202,45 @@ export default function Customers() {
         const numericOpeningBalance = Number(openingBalance) || 0;
 
         if (editingCustomer) {
-            // Calculate new current balance relative to opening balance adjustment
             const balanceDifference = numericOpeningBalance - editingCustomer.openingBalance;
             const newCurrentBalance = editingCustomer.currentBalance + balanceDifference;
 
-            setCustomers(
-                customers.map((c) => {
-                    if (c.id === editingCustomer.id) {
-                        return {
-                            ...c,
-                            companyName: companyName.trim(),
-                            contactPerson: contactPerson.trim(),
-                            phone: phone.trim(),
-                            whatsapp: whatsapp.trim(),
-                            email: email.trim(),
-                            address1: address1.trim(),
-                            address2: address2.trim(),
-                            city: city.trim(),
-                            province: province.trim(),
-                            country: country.trim(),
-                            postalCode: postalCode.trim(),
-                            ntn: ntn.trim(),
-                            businessType,
-                            creditLimit: numericCreditLimit,
-                            openingBalance: numericOpeningBalance,
-                            currentBalance: newCurrentBalance,
-                            status,
-                            notes: notes.trim(),
-                        };
-                    }
-                    return c;
-                })
-            );
-            setSuccessMessage('Customer updated successfully.');
-        } else {
-            const newId = Math.max(...customers.map((c) => c.id), 0) + 1;
-            setCustomers([
-                ...customers,
-                {
-                    id: newId,
-                    companyName: companyName.trim(),
-                    contactPerson: contactPerson.trim(),
-                    phone: phone.trim(),
-                    whatsapp: whatsapp.trim(),
-                    email: email.trim(),
-                    address1: address1.trim(),
-                    address2: address2.trim(),
-                    city: city.trim(),
-                    province: province.trim(),
-                    country: country.trim(),
-                    postalCode: postalCode.trim(),
-                    ntn: ntn.trim(),
-                    businessType,
-                    creditLimit: numericCreditLimit,
-                    openingBalance: numericOpeningBalance,
-                    currentBalance: numericOpeningBalance,
-                    status,
-                    notes: notes.trim(),
+            const saveCustomer = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'UPDATE customers SET company_name = ?, contact_person = ?, phone = ?, whatsapp = ?, email = ?, address1 = ?, address2 = ?, city = ?, province = ?, country = ?, postal_code = ?, ntn = ?, business_type = ?, credit_limit = ?, opening_balance = ?, current_balance = ?, status = ?, notes = ? WHERE id = ?',
+                        [companyName.trim(), contactPerson.trim(), phone.trim(), whatsapp.trim(), email.trim(), address1.trim(), address2.trim(), city.trim(), province.trim(), country.trim(), postalCode.trim(), ntn.trim(), businessType, numericCreditLimit, numericOpeningBalance, newCurrentBalance, status, notes.trim(), editingCustomer.id]
+                    );
+                    setSuccessMessage('Customer updated successfully.');
+                    await fetchCustomers();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[Customers] Error saving customer:', err);
                 }
-            ]);
-            setSuccessMessage('Customer created successfully.');
+            };
+            saveCustomer();
+        } else {
+            const createCustomer = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'INSERT INTO customers (company_name, contact_person, phone, whatsapp, email, address1, address2, city, province, country, postal_code, ntn, business_type, credit_limit, opening_balance, current_balance, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [companyName.trim(), contactPerson.trim(), phone.trim(), whatsapp.trim(), email.trim(), address1.trim(), address2.trim(), city.trim(), province.trim(), country.trim(), postalCode.trim(), ntn.trim(), businessType, numericCreditLimit, numericOpeningBalance, numericOpeningBalance, status, notes.trim()]
+                    );
+                    setSuccessMessage('Customer created successfully.');
+                    await fetchCustomers();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[Customers] Error creating customer:', err);
+                }
+            };
+            createCustomer();
         }
-
-        setIsModalOpen(false);
-        resetModalFields();
-        setTimeout(() => setSuccessMessage(''), 4000);
     };
 
     const handleDeleteClick = (customer: CustomerItem) => {
@@ -261,11 +250,20 @@ export default function Customers() {
 
     const handleConfirmDelete = () => {
         if (!deleteTarget) return;
-        setCustomers(customers.filter((c) => c.id !== deleteTarget.id));
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-        setSuccessMessage('Customer deleted successfully.');
-        setTimeout(() => setSuccessMessage(''), 4000);
+
+        const deleteCustomer = async () => {
+            try {
+                await (window as any).electron.invoke('db-query', 'DELETE FROM customers WHERE id = ?', [deleteTarget.id]);
+                setSuccessMessage('Customer deleted successfully.');
+                await fetchCustomers();
+                setIsDeleteModalOpen(false);
+                setDeleteTarget(null);
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[Customers] Error deleting customer:', err);
+            }
+        };
+        deleteCustomer();
     };
 
     const filteredCustomers = customers.filter((c) => {

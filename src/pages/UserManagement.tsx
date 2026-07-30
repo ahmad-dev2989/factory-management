@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, Eye, EyeOff, X, AlertTriangle } from 'lucide-react';
 
@@ -20,17 +20,31 @@ export default function UserManagement() {
   };
 
   // State lists
-  const [users, setUsers] = useState<UserItem[]>([
-    {
-      id: 1,
-      fullName: 'Administrator',
-      username: 'admin',
-      role: 'Administrator',
-      status: 'Active',
-      lastLogin: 'Never',
-      password: 'admin'
+  const [users, setUsers] = useState<UserItem[]>([]);
+
+  const fetchUsers = async () => {
+    try {
+      const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM users');
+      if (raw && !raw.error) {
+        const mapped = raw.map((u: any) => ({
+          id: u.id,
+          fullName: u.full_name,
+          username: u.username,
+          role: u.role,
+          status: u.status,
+          lastLogin: u.last_login,
+          password: u.password
+        }));
+        setUsers(mapped);
+      }
+    } catch (err) {
+      console.error('[UserManagement] Failed to load users:', err);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -136,42 +150,50 @@ export default function UserManagement() {
     }
 
     if (editingUser) {
-      setUsers(
-        users.map((u) => {
-          if (u.id === editingUser.id) {
-            return {
-              ...u,
-              fullName: fullName.trim(),
-              username: username.trim(),
-              role,
-              status,
-              password: password ? password : u.password
-            };
+      const saveUser = async () => {
+        try {
+          if (password) {
+            await (window as any).electron.invoke(
+              'db-query',
+              'UPDATE users SET full_name = ?, username = ?, role = ?, status = ?, password = ? WHERE id = ?',
+              [fullName.trim(), username.trim(), role, status, password, editingUser.id]
+            );
+          } else {
+            await (window as any).electron.invoke(
+              'db-query',
+              'UPDATE users SET full_name = ?, username = ?, role = ?, status = ? WHERE id = ?',
+              [fullName.trim(), username.trim(), role, status, editingUser.id]
+            );
           }
-          return u;
-        })
-      );
-      setSuccessMessage('User updated successfully.');
-    } else {
-      const newId = Math.max(...users.map((u) => u.id), 0) + 1;
-      setUsers([
-        ...users,
-        {
-          id: newId,
-          fullName: fullName.trim(),
-          username: username.trim(),
-          role,
-          status,
-          lastLogin: 'Never',
-          password
+          setSuccessMessage('User updated successfully.');
+          await fetchUsers();
+          setIsModalOpen(false);
+          resetModalFields();
+          setTimeout(() => setSuccessMessage(''), 4000);
+        } catch (err) {
+          console.error('[UserManagement] Save user error:', err);
         }
-      ]);
-      setSuccessMessage('User created successfully.');
+      };
+      saveUser();
+    } else {
+      const createUser = async () => {
+        try {
+          await (window as any).electron.invoke(
+            'db-query',
+            'INSERT INTO users (full_name, username, role, status, password, last_login) VALUES (?, ?, ?, ?, ?, ?)',
+            [fullName.trim(), username.trim(), role, status, password, 'Never']
+          );
+          setSuccessMessage('User created successfully.');
+          await fetchUsers();
+          setIsModalOpen(false);
+          resetModalFields();
+          setTimeout(() => setSuccessMessage(''), 4000);
+        } catch (err) {
+          console.error('[UserManagement] Create user error:', err);
+        }
+      };
+      createUser();
     }
-
-    setIsModalOpen(false);
-    resetModalFields();
-    setTimeout(() => setSuccessMessage(''), 4000);
   };
 
   const handleDeleteClick = (user: UserItem) => {
@@ -192,11 +214,19 @@ export default function UserManagement() {
       return;
     }
 
-    setUsers(users.filter((u) => u.id !== deleteTarget.id));
-    setIsDeleteModalOpen(false);
-    setDeleteTarget(null);
-    setSuccessMessage('User deleted successfully.');
-    setTimeout(() => setSuccessMessage(''), 4000);
+    const deleteUser = async () => {
+      try {
+        await (window as any).electron.invoke('db-query', 'DELETE FROM users WHERE id = ?', [deleteTarget.id]);
+        setSuccessMessage('User deleted successfully.');
+        await fetchUsers();
+        setIsDeleteModalOpen(false);
+        setDeleteTarget(null);
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } catch (err) {
+        console.error('[UserManagement] Delete user error:', err);
+      }
+    };
+    deleteUser();
   };
 
   // Instant Search Logic

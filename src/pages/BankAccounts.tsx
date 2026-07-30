@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle } from 'lucide-react';
 
@@ -26,53 +26,37 @@ export default function BankAccounts() {
     };
 
     // Initial Data State
-    const [accounts, setAccounts] = useState<AccountItem[]>([
-        {
-            id: 1,
-            name: 'Cash in Hand',
-            type: 'Cash',
-            currency: 'PKR',
-            bankName: '',
-            accountNumber: '',
-            branchName: '',
-            iban: '',
-            openingBalance: 0,
-            currentBalance: 0,
-            status: 'Active',
-            notes: 'Main cash register',
-            isDefault: true
-        },
-        {
-            id: 2,
-            name: 'Meezan Bank',
-            type: 'Bank Account',
-            currency: 'PKR',
-            bankName: 'Meezan Bank',
-            accountNumber: '010123456789',
-            branchName: 'Main Branch',
-            iban: 'PK00MEZN0000000123456789',
-            openingBalance: 150000,
-            currentBalance: 150000,
-            status: 'Active',
-            notes: 'Primary business account',
-            isDefault: true
-        },
-        {
-            id: 3,
-            name: 'EasyPaisa',
-            type: 'Mobile Wallet',
-            currency: 'PKR',
-            bankName: 'Telenor Bank',
-            accountNumber: '03001234567',
-            branchName: '',
-            iban: '',
-            openingBalance: 5000,
-            currentBalance: 5000,
-            status: 'Active',
-            notes: 'Quick transfers',
-            isDefault: true
+    const [accounts, setAccounts] = useState<AccountItem[]>([]);
+
+    const fetchAccounts = async () => {
+        try {
+            const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM bank_accounts');
+            if (raw && !raw.error) {
+                const mapped = raw.map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    type: a.type,
+                    currency: a.currency,
+                    bankName: a.bank_name || '',
+                    accountNumber: a.account_number || '',
+                    branchName: a.branch_name || '',
+                    iban: a.iban || '',
+                    openingBalance: Number(a.opening_balance),
+                    currentBalance: Number(a.current_balance),
+                    status: a.status,
+                    notes: a.notes || '',
+                    isDefault: Boolean(a.is_default)
+                }));
+                setAccounts(mapped);
+            }
+        } catch (err) {
+            console.error('[BankAccounts] Failed to fetch accounts:', err);
         }
-    ]);
+    };
+
+    useEffect(() => {
+        fetchAccounts();
+    }, []);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -169,58 +153,45 @@ export default function BankAccounts() {
         const numericOpeningBalance = Number(openingBalance) || 0;
 
         if (editingAccount) {
-            // Current Balance calculation (in a real app this accounts for transactions, but we adjust it by the delta of opening balance change here)
             const balanceDifference = numericOpeningBalance - editingAccount.openingBalance;
             const newCurrentBalance = editingAccount.currentBalance + balanceDifference;
 
-            setAccounts(
-                accounts.map((a) => {
-                    if (a.id === editingAccount.id) {
-                        return {
-                            ...a,
-                            name: name.trim(),
-                            type,
-                            currency,
-                            bankName: bankName.trim(),
-                            accountNumber: accountNumber.trim(),
-                            branchName: branchName.trim(),
-                            iban: iban.trim(),
-                            openingBalance: numericOpeningBalance,
-                            currentBalance: newCurrentBalance,
-                            status,
-                            notes: notes.trim(),
-                        };
-                    }
-                    return a;
-                })
-            );
-            setSuccessMessage('Account updated successfully.');
-        } else {
-            const newId = Math.max(...accounts.map((a) => a.id), 0) + 1;
-            setAccounts([
-                ...accounts,
-                {
-                    id: newId,
-                    name: name.trim(),
-                    type,
-                    currency,
-                    bankName: bankName.trim(),
-                    accountNumber: accountNumber.trim(),
-                    branchName: branchName.trim(),
-                    iban: iban.trim(),
-                    openingBalance: numericOpeningBalance,
-                    currentBalance: numericOpeningBalance,
-                    status,
-                    notes: notes.trim(),
-                    isDefault: false
+            const saveAccount = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'UPDATE bank_accounts SET name = ?, type = ?, currency = ?, bank_name = ?, account_number = ?, branch_name = ?, iban = ?, opening_balance = ?, current_balance = ?, status = ?, notes = ? WHERE id = ?',
+                        [name.trim(), type, currency, bankName.trim(), accountNumber.trim(), branchName.trim(), iban.trim(), numericOpeningBalance, newCurrentBalance, status, notes.trim(), editingAccount.id]
+                    );
+                    setSuccessMessage('Account updated successfully.');
+                    await fetchAccounts();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[BankAccounts] Error saving account:', err);
                 }
-            ]);
-            setSuccessMessage('Account created successfully.');
+            };
+            saveAccount();
+        } else {
+            const createAccount = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'INSERT INTO bank_accounts (name, type, currency, bank_name, account_number, branch_name, iban, opening_balance, current_balance, status, notes, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [name.trim(), type, currency, bankName.trim(), accountNumber.trim(), branchName.trim(), iban.trim(), numericOpeningBalance, numericOpeningBalance, status, notes.trim(), 0]
+                    );
+                    setSuccessMessage('Account created successfully.');
+                    await fetchAccounts();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[BankAccounts] Error creating account:', err);
+                }
+            };
+            createAccount();
         }
-
-        setIsModalOpen(false);
-        resetModalFields();
-        setTimeout(() => setSuccessMessage(''), 4000);
     };
 
     const handleDeleteClick = (account: AccountItem) => {
@@ -241,11 +212,19 @@ export default function BankAccounts() {
             return;
         }
 
-        setAccounts(accounts.filter((a) => a.id !== deleteTarget.id));
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-        setSuccessMessage('Account deleted successfully.');
-        setTimeout(() => setSuccessMessage(''), 4000);
+        const deleteAccount = async () => {
+            try {
+                await (window as any).electron.invoke('db-query', 'DELETE FROM bank_accounts WHERE id = ?', [deleteTarget.id]);
+                setSuccessMessage('Account deleted successfully.');
+                await fetchAccounts();
+                setIsDeleteModalOpen(false);
+                setDeleteTarget(null);
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[BankAccounts] Error deleting account:', err);
+            }
+        };
+        deleteAccount();
     };
 
     const filteredAccounts = accounts.filter((a) => {

@@ -128,6 +128,15 @@ const MiscSettingsIcon = () => (
   </svg>
 );
 
+const BackupRestoreIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="6" width="24" height="20" rx="2" fill="#9B51E0" />
+    <circle cx="16" cy="16" r="6" stroke="#FFFFFF" strokeWidth="2.5" fill="none" />
+    <path d="M16 11.5L18.5 13M16 11.5L13.5 13" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+    <path d="M16 20.5L18.5 19M16 20.5L13.5 19" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 export default function Settings() {
   const navigate = useNavigate();
 
@@ -195,6 +204,11 @@ export default function Settings() {
       title: 'Misc Settings',
       description: 'General application settings',
       icon: MiscSettingsIcon,
+    },
+    {
+      title: 'Backup & Restore',
+      description: 'Create backups and restore system databases and documents',
+      icon: BackupRestoreIcon,
     },
   ];
 
@@ -290,6 +304,8 @@ export default function Settings() {
                       navigate('/linked-accounts');
                     } else if (card.title === 'Misc Settings') {
                       navigate('/system-preferences');
+                    } else if (card.title === 'Backup & Restore') {
+                      navigate('/backup-restore');
                     }
                   }}
                   className="bg-white border border-[#E5E7EB] rounded-[10px] p-7 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:shadow-[0_4px_12px_0_rgba(0,0,0,0.08)] hover:bg-[#EEF5FF] hover:border-[#2F80ED]/30 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[165px]"

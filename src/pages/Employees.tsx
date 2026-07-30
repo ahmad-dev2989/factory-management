@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle } from 'lucide-react';
 
@@ -31,28 +31,43 @@ export default function Employees() {
     };
 
     // Initial Data State
-    const [employees, setEmployees] = useState<EmployeeItem[]>([
-        {
-            id: 1,
-            empCode: 'EMP-0001',
-            fullName: 'Ahmad Farooq',
-            fatherName: 'Farooq',
-            cnic: '33100-1234567-1',
-            phone: '0313-0685030',
-            altPhone: '',
-            email: 'ahmadfarooq.dev2989@gmail.com',
-            address: 'Faisalabad, Pakistan',
-            city: 'Faisalabad',
-            designation: 'Software Developer',
-            department: 'Management',
-            joiningDate: '2025-01-01',
-            salary: 150000,
-            emergencyContactName: '',
-            emergencyContactNumber: '',
-            status: 'Active',
-            notes: 'Key Developer'
+    const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+
+    const fetchEmployees = async () => {
+        try {
+            const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM employees');
+            if (raw && !raw.error) {
+                const mapped = raw.map((emp: any) => ({
+                    id: emp.id,
+                    empCode: emp.emp_code,
+                    fullName: emp.full_name,
+                    fatherName: emp.father_name || '',
+                    cnic: emp.cnic || '',
+                    phone: emp.phone || '',
+                    altPhone: emp.alt_phone || '',
+                    email: emp.email || '',
+                    address: emp.address || '',
+                    city: emp.city || '',
+                    designation: emp.designation,
+                    department: emp.department,
+                    joiningDate: emp.joining_date || '',
+                    salary: Number(emp.salary),
+                    emergencyContactName: emp.emergency_contact_name || '',
+                    emergencyContactNumber: emp.emergency_contact_number || '',
+                    status: emp.status,
+                    notes: emp.notes || ''
+                }));
+                setEmployees(mapped);
+            }
+        } catch (err) {
+            console.error('[Employees] Failed to fetch employees:', err);
         }
-    ]);
+    };
+
+    useEffect(() => {
+        fetchEmployees();
+    }, []);
+
 
     const [searchQuery, setSearchQuery] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -168,64 +183,46 @@ export default function Employees() {
         const numericSalary = salary ? Number(salary) : 0;
 
         if (editingEmployee) {
-            setEmployees(
-                employees.map((emp) => {
-                    if (emp.id === editingEmployee.id) {
-                        return {
-                            ...emp,
-                            fullName: fullName.trim(),
-                            fatherName: fatherName.trim(),
-                            cnic: cnic.trim(),
-                            phone: phone.trim(),
-                            altPhone: altPhone.trim(),
-                            email: email.trim(),
-                            address: address.trim(),
-                            city: city.trim(),
-                            designation: designation.trim(),
-                            department: department.trim(),
-                            joiningDate,
-                            salary: numericSalary,
-                            emergencyContactName: emergencyContactName.trim(),
-                            emergencyContactNumber: emergencyContactNumber.trim(),
-                            status,
-                            notes: notes.trim(),
-                        };
-                    }
-                    return emp;
-                })
-            );
-            setSuccessMessage('Employee updated successfully.');
-        } else {
-            const newId = Math.max(...employees.map((e) => e.id), 0) + 1;
-            setEmployees([
-                ...employees,
-                {
-                    id: newId,
-                    empCode: generateEmpCode(newId),
-                    fullName: fullName.trim(),
-                    fatherName: fatherName.trim(),
-                    cnic: cnic.trim(),
-                    phone: phone.trim(),
-                    altPhone: altPhone.trim(),
-                    email: email.trim(),
-                    address: address.trim(),
-                    city: city.trim(),
-                    designation: designation.trim(),
-                    department: department.trim(),
-                    joiningDate,
-                    salary: numericSalary,
-                    emergencyContactName: emergencyContactName.trim(),
-                    emergencyContactNumber: emergencyContactNumber.trim(),
-                    status,
-                    notes: notes.trim(),
+            const saveEmployee = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'UPDATE employees SET full_name = ?, father_name = ?, cnic = ?, phone = ?, alt_phone = ?, email = ?, address = ?, city = ?, designation = ?, department = ?, joining_date = ?, salary = ?, emergency_contact_name = ?, emergency_contact_number = ?, status = ?, notes = ? WHERE id = ?',
+                        [fullName.trim(), fatherName.trim(), cnic.trim(), phone.trim(), altPhone.trim(), email.trim(), address.trim(), city.trim(), designation.trim(), department.trim(), joiningDate, numericSalary, emergencyContactName.trim(), emergencyContactNumber.trim(), status, notes.trim(), editingEmployee.id]
+                    );
+                    setSuccessMessage('Employee updated successfully.');
+                    await fetchEmployees();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[Employees] Error saving employee:', err);
                 }
-            ]);
-            setSuccessMessage('Employee created successfully.');
-        }
+            };
+            saveEmployee();
+        } else {
+            const createEmployee = async () => {
+                try {
+                    const res = await (window as any).electron.invoke('db-query', 'SELECT MAX(id) as maxId FROM employees');
+                    const nextId = (res && res[0] && res[0].maxId ? res[0].maxId : 0) + 1;
+                    const code = 'EMP-' + String(nextId).padStart(4, '0');
 
-        setIsModalOpen(false);
-        resetModalFields();
-        setTimeout(() => setSuccessMessage(''), 4000);
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'INSERT INTO employees (emp_code, full_name, father_name, cnic, phone, alt_phone, email, address, city, designation, department, joining_date, salary, emergency_contact_name, emergency_contact_number, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [code, fullName.trim(), fatherName.trim(), cnic.trim(), phone.trim(), altPhone.trim(), email.trim(), address.trim(), city.trim(), designation.trim(), department.trim(), joiningDate, numericSalary, emergencyContactName.trim(), emergencyContactNumber.trim(), status, notes.trim()]
+                    );
+                    setSuccessMessage('Employee created successfully.');
+                    await fetchEmployees();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[Employees] Error creating employee:', err);
+                }
+            };
+            createEmployee();
+        }
     };
 
     const handleDeleteClick = (emp: EmployeeItem) => {
@@ -235,11 +232,20 @@ export default function Employees() {
 
     const handleConfirmDelete = () => {
         if (!deleteTarget) return;
-        setEmployees(employees.filter((e) => e.id !== deleteTarget.id));
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-        setSuccessMessage('Employee deleted successfully.');
-        setTimeout(() => setSuccessMessage(''), 4000);
+
+        const deleteEmployee = async () => {
+            try {
+                await (window as any).electron.invoke('db-query', 'DELETE FROM employees WHERE id = ?', [deleteTarget.id]);
+                setSuccessMessage('Employee deleted successfully.');
+                await fetchEmployees();
+                setIsDeleteModalOpen(false);
+                setDeleteTarget(null);
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[Employees] Error deleting employee:', err);
+            }
+        };
+        deleteEmployee();
     };
 
     const filteredEmployees = employees.filter((e) => {

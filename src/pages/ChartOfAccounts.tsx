@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle, ChevronDown } from 'lucide-react';
 
@@ -28,36 +28,33 @@ export default function ChartOfAccounts() {
         navigate('/login');
     };
 
-    // Initial Seed Data with required hierarchy
-    const [accounts, setAccounts] = useState<AccountItem[]>([
-        { id: 1, code: 'ACC-0001', name: 'Assets', parentId: null, type: 'Asset', description: 'All company assets', status: 'Active', isRoot: true, isDefault: true },
-        { id: 2, code: 'ACC-0002', name: 'Liabilities', parentId: null, type: 'Liability', description: 'All company liabilities', status: 'Active', isRoot: true, isDefault: true },
-        { id: 3, code: 'ACC-0003', name: 'Equity', parentId: null, type: 'Equity', description: 'Owner equity and shares', status: 'Active', isRoot: true, isDefault: true },
-        { id: 4, code: 'ACC-0004', name: 'Income', parentId: null, type: 'Income', description: 'All revenue streams', status: 'Active', isRoot: true, isDefault: true },
-        { id: 5, code: 'ACC-0005', name: 'Cost of Goods Sold', parentId: null, type: 'Cost of Goods Sold', description: 'Direct costs of production', status: 'Active', isRoot: true, isDefault: true },
-        { id: 6, code: 'ACC-0006', name: 'Expenses', parentId: null, type: 'Expense', description: 'Indirect operating expenses', status: 'Active', isRoot: true, isDefault: true },
+    const [accounts, setAccounts] = useState<AccountItem[]>([]);
 
-        { id: 7, code: 'ACC-0007', name: 'Current Assets', parentId: 1, type: 'Asset', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 8, code: 'ACC-0008', name: 'Fixed Assets', parentId: 1, type: 'Asset', description: '', status: 'Active', isRoot: false, isDefault: true },
+    const fetchAccounts = async () => {
+        try {
+            const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM chart_of_accounts');
+            if (raw && !raw.error) {
+                const mapped = raw.map((a: any) => ({
+                    id: a.id,
+                    code: a.code,
+                    name: a.name,
+                    parentId: a.parent_id === null ? null : Number(a.parent_id),
+                    type: a.type,
+                    description: a.description || '',
+                    status: a.status,
+                    isRoot: Boolean(a.is_root),
+                    isDefault: Boolean(a.is_default)
+                }));
+                setAccounts(mapped);
+            }
+        } catch (err) {
+            console.error('[ChartOfAccounts] Failed to fetch accounts:', err);
+        }
+    };
 
-        { id: 9, code: 'ACC-0009', name: 'Cash in Hand', parentId: 7, type: 'Asset', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 10, code: 'ACC-0010', name: 'Meezan Bank', parentId: 7, type: 'Asset', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 11, code: 'ACC-0011', name: 'EasyPaisa', parentId: 7, type: 'Asset', description: '', status: 'Active', isRoot: false, isDefault: true },
-
-        { id: 12, code: 'ACC-0012', name: 'Accounts Payable', parentId: 2, type: 'Liability', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 13, code: 'ACC-0013', name: 'Owner Capital', parentId: 3, type: 'Equity', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 14, code: 'ACC-0014', name: 'Sales Income', parentId: 4, type: 'Income', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 15, code: 'ACC-0015', name: 'Purchase Cost', parentId: 5, type: 'Cost of Goods Sold', description: '', status: 'Active', isRoot: false, isDefault: true },
-
-        { id: 16, code: 'ACC-0016', name: 'Electricity', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 17, code: 'ACC-0017', name: 'Internet', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 18, code: 'ACC-0018', name: 'Fuel', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 19, code: 'ACC-0019', name: 'Office Rent', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 20, code: 'ACC-0020', name: 'Salary', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 21, code: 'ACC-0021', name: 'Marketing', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 22, code: 'ACC-0022', name: 'Office Supplies', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-        { id: 23, code: 'ACC-0023', name: 'Repair & Maintenance', parentId: 6, type: 'Expense', description: '', status: 'Active', isRoot: false, isDefault: true },
-    ]);
+    useEffect(() => {
+        fetchAccounts();
+    }, []);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -154,48 +151,46 @@ export default function ChartOfAccounts() {
         }
 
         if (editingAccount) {
-            setAccounts(
-                accounts.map(a => {
-                    if (a.id === editingAccount.id) {
-                        return {
-                            ...a,
-                            name: name.trim(),
-                            parentId: Number(parentId),
-                            type,
-                            description: description.trim(),
-                            status
-                        };
-                    }
-                    return a;
-                })
-            );
-            setSuccessMessage('Account updated successfully.');
-        } else {
-            const newId = Math.max(...accounts.map(a => a.id), 0) + 1;
-            setAccounts([
-                ...accounts,
-                {
-                    id: newId,
-                    code: generateAccountCode(),
-                    name: name.trim(),
-                    parentId: Number(parentId),
-                    type,
-                    description: description.trim(),
-                    status,
-                    isRoot: false,
-                    isDefault: false
+            const saveAccount = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'UPDATE chart_of_accounts SET name = ?, parent_id = ?, type = ?, description = ?, status = ? WHERE id = ?',
+                        [name.trim(), Number(parentId), type, description.trim(), status, editingAccount.id]
+                    );
+                    setSuccessMessage('Account updated successfully.');
+                    await fetchAccounts();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[ChartOfAccounts] Error saving account:', err);
                 }
-            ]);
-            // Auto-expand the parent so the new account is visible
-            if (parentId) {
-                setExpandedIds(prev => new Set(prev).add(Number(parentId)));
-            }
-            setSuccessMessage('Account created successfully.');
+            };
+            saveAccount();
+        } else {
+            const code = generateAccountCode();
+            const createAccount = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'INSERT INTO chart_of_accounts (code, name, parent_id, type, description, status, is_root, is_default) VALUES (?, ?, ?, ?, ?, ?, 0, 0)',
+                        [code, name.trim(), Number(parentId), type, description.trim(), status]
+                    );
+                    setSuccessMessage('Account created successfully.');
+                    if (parentId) {
+                        setExpandedIds(prev => new Set(prev).add(Number(parentId)));
+                    }
+                    await fetchAccounts();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[ChartOfAccounts] Error creating account:', err);
+                }
+            };
+            createAccount();
         }
-
-        setIsModalOpen(false);
-        resetModalFields();
-        setTimeout(() => setSuccessMessage(''), 4000);
     };
 
     const handleDeleteClick = (acc: AccountItem) => {
@@ -216,19 +211,25 @@ export default function ChartOfAccounts() {
             return;
         }
 
-        // Optional: Reassign or block delete if it has children. For simplicity, let's just delete (or cascading).
-        // Usually accounting systems block deletion if children exist. Let's block it nicely.
         const hasChildren = accounts.some(a => a.parentId === deleteTarget.id);
         if (hasChildren) {
             setDeleteError('Cannot delete an account that has child accounts.');
             return;
         }
 
-        setAccounts(accounts.filter((a) => a.id !== deleteTarget.id));
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-        setSuccessMessage('Account deleted successfully.');
-        setTimeout(() => setSuccessMessage(''), 4000);
+        const deleteAccount = async () => {
+            try {
+                await (window as any).electron.invoke('db-query', 'DELETE FROM chart_of_accounts WHERE id = ?', [deleteTarget.id]);
+                setSuccessMessage('Account deleted successfully.');
+                await fetchAccounts();
+                setIsDeleteModalOpen(false);
+                setDeleteTarget(null);
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[ChartOfAccounts] Error deleting account:', err);
+            }
+        };
+        deleteAccount();
     };
 
     // Tree Building Logic

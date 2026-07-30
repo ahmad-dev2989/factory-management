@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Lock, Eye, EyeOff } from 'lucide-react';
 
@@ -27,6 +27,22 @@ export default function ChangePassword({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
+  
+  const [dbAdminPassword, setDbAdminPassword] = useState(adminPassword);
+
+  useEffect(() => {
+    const fetchAdminPassword = async () => {
+      try {
+        const users = await (window as any).electron.invoke('db-query', "SELECT password FROM users WHERE username = 'admin'");
+        if (users && users.length > 0) {
+          setDbAdminPassword(users[0].password);
+        }
+      } catch (err) {
+        console.error('[ChangePassword] Failed to load admin password:', err);
+      }
+    };
+    fetchAdminPassword();
+  }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +51,7 @@ export default function ChangePassword({
     // Validate Current Password
     if (!currentPassword) {
       newErrors.currentPassword = 'Current Password is required';
-    } else if (currentPassword !== adminPassword) {
+    } else if (currentPassword !== dbAdminPassword) {
       newErrors.currentPassword = 'Current password is incorrect.';
     }
 
@@ -56,7 +72,7 @@ export default function ChangePassword({
       !specialRegex.test(newPassword)
     ) {
       newErrors.newPassword = 'Password does not meet complexity requirements';
-    } else if (newPassword === adminPassword) {
+    } else if (newPassword === dbAdminPassword) {
       newErrors.newPassword = 'New password cannot be the same as the current password.';
     }
 
@@ -74,14 +90,26 @@ export default function ChangePassword({
     }
 
     // Successful update
-    setAdminPassword(newPassword);
-    setErrors({});
-    setSuccessMessage('Password changed successfully.');
-
-    // Reset fields
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    const updateDbPassword = async () => {
+      try {
+        await (window as any).electron.invoke(
+          'db-query',
+          "UPDATE users SET password = ? WHERE username = 'admin'",
+          [newPassword]
+        );
+        setDbAdminPassword(newPassword);
+        setAdminPassword(newPassword);
+        setErrors({});
+        setSuccessMessage('Password changed successfully.');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } catch (err) {
+        console.error('[ChangePassword] Failed to save password:', err);
+        setErrors({ general: 'Failed to update database.' });
+      }
+    };
+    updateDbPassword();
   };
 
   return (

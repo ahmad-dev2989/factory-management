@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Save, RotateCcw, FolderOpen, DatabaseBackup, DownloadCloud, Info } from 'lucide-react';
 
@@ -44,6 +44,20 @@ export default function SystemPreferences() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [successMessage, setSuccessMessage] = useState('');
 
+    useEffect(() => {
+        const fetchPrefs = async () => {
+            try {
+                const res = await (window as any).electron.invoke('db-query', "SELECT value FROM app_settings WHERE key = 'system_preferences_config'");
+                if (res && res[0] && res[0].value) {
+                    setPrefs(JSON.parse(res[0].value));
+                }
+            } catch (err) {
+                console.error('[SystemPreferences] Failed to load preferences:', err);
+            }
+        };
+        fetchPrefs();
+    }, []);
+
     const updatePref = (key: keyof typeof defaultPrefs, value: string | boolean) => {
         setPrefs(prev => ({ ...prev, [key]: value }));
         if (errors[key]) {
@@ -73,16 +87,41 @@ export default function SystemPreferences() {
             return;
         }
 
-        setErrors({});
-        setSuccessMessage('System preferences updated successfully.');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => setSuccessMessage(''), 4000);
+        const savePrefs = async () => {
+            try {
+                await (window as any).electron.invoke(
+                    'db-query',
+                    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('system_preferences_config', ?)",
+                    [JSON.stringify(prefs)]
+                );
+                setErrors({});
+                setSuccessMessage('System preferences updated successfully.');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[SystemPreferences] Failed to save preferences:', err);
+            }
+        };
+        savePrefs();
     };
 
     const handleReset = () => {
-        setPrefs(defaultPrefs);
-        setErrors({});
-        setSuccessMessage('');
+        const resetPrefs = async () => {
+            try {
+                await (window as any).electron.invoke(
+                    'db-query',
+                    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('system_preferences_config', ?)",
+                    [JSON.stringify(defaultPrefs)]
+                );
+                setPrefs(defaultPrefs);
+                setErrors({});
+                setSuccessMessage('System preferences reset to defaults.');
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[SystemPreferences] Failed to reset preferences:', err);
+            }
+        };
+        resetPrefs();
     };
 
     return (

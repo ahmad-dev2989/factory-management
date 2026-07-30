@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle } from 'lucide-react';
 
@@ -26,18 +26,31 @@ export default function ExpenseAccounts() {
     ];
 
     // Initial Data State
-    const [expenses, setExpenses] = useState<ExpenseItem[]>([
-        { id: 1, code: 'EXP-0001', name: 'Electricity', linkedAccount: 'Electricity', description: 'Monthly electricity bills', status: 'Active', isDefault: true },
-        { id: 2, code: 'EXP-0002', name: 'Internet', linkedAccount: 'Internet', description: 'ISP and connectivity', status: 'Active', isDefault: true },
-        { id: 3, code: 'EXP-0003', name: 'Fuel', linkedAccount: 'Fuel', description: 'Vehicle and generator fuel', status: 'Active', isDefault: true },
-        { id: 4, code: 'EXP-0004', name: 'Office Rent', linkedAccount: 'Office Rent', description: 'Monthly premises rent', status: 'Active', isDefault: true },
-        { id: 5, code: 'EXP-0005', name: 'Salary', linkedAccount: 'Salary', description: 'Staff salaries and wages', status: 'Active', isDefault: true },
-        { id: 6, code: 'EXP-0006', name: 'Marketing', linkedAccount: 'Marketing', description: 'Ads and promotions', status: 'Active', isDefault: true },
-        { id: 7, code: 'EXP-0007', name: 'Office Supplies', linkedAccount: 'Office Supplies', description: 'Stationery and daily supplies', status: 'Active', isDefault: true },
-        { id: 8, code: 'EXP-0008', name: 'Repair & Maintenance', linkedAccount: 'Repair & Maintenance', description: 'Equipment and facility repair', status: 'Active', isDefault: true },
-        { id: 9, code: 'EXP-0009', name: 'Transport', linkedAccount: 'Transport', description: 'Logistics and commute', status: 'Active', isDefault: true },
-        { id: 10, code: 'EXP-0010', name: 'Miscellaneous', linkedAccount: 'Miscellaneous', description: 'Uncategorized expenses', status: 'Active', isDefault: true },
-    ]);
+    const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+
+    const fetchExpenses = async () => {
+        try {
+            const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM expense_accounts');
+            if (raw && !raw.error) {
+                const mapped = raw.map((ex: any) => ({
+                    id: ex.id,
+                    code: ex.code,
+                    name: ex.name,
+                    linkedAccount: ex.linked_account || '',
+                    description: ex.description || '',
+                    status: ex.status,
+                    isDefault: Boolean(ex.is_default)
+                }));
+                setExpenses(mapped);
+            }
+        } catch (err) {
+            console.error('[ExpenseAccounts] Failed to fetch expenses:', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchExpenses();
+    }, []);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -113,41 +126,46 @@ export default function ExpenseAccounts() {
         }
 
         if (editingExpense) {
-            setExpenses(
-                expenses.map((ex) => {
-                    if (ex.id === editingExpense.id) {
-                        return {
-                            ...ex,
-                            name: name.trim(),
-                            linkedAccount,
-                            description: description.trim(),
-                            status
-                        };
-                    }
-                    return ex;
-                })
-            );
-            setSuccessMessage('Expense account updated successfully.');
-        } else {
-            const newId = Math.max(...expenses.map((ex) => ex.id), 0) + 1;
-            setExpenses([
-                ...expenses,
-                {
-                    id: newId,
-                    code: generateExpenseCode(newId),
-                    name: name.trim(),
-                    linkedAccount,
-                    description: description.trim(),
-                    status,
-                    isDefault: false
+            const saveExpense = async () => {
+                try {
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'UPDATE expense_accounts SET name = ?, linked_account = ?, description = ?, status = ? WHERE id = ?',
+                        [name.trim(), linkedAccount, description.trim(), status, editingExpense.id]
+                    );
+                    setSuccessMessage('Expense account updated successfully.');
+                    await fetchExpenses();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[ExpenseAccounts] Error saving expense account:', err);
                 }
-            ]);
-            setSuccessMessage('Expense account created successfully.');
-        }
+            };
+            saveExpense();
+        } else {
+            const createExpense = async () => {
+                try {
+                    const res = await (window as any).electron.invoke('db-query', 'SELECT MAX(id) as maxId FROM expense_accounts');
+                    const nextId = (res && res[0] && res[0].maxId ? res[0].maxId : 0) + 1;
+                    const code = 'EXP-' + String(nextId).padStart(4, '0');
 
-        setIsModalOpen(false);
-        resetModalFields();
-        setTimeout(() => setSuccessMessage(''), 4000);
+                    await (window as any).electron.invoke(
+                        'db-query',
+                        'INSERT INTO expense_accounts (code, name, linked_account, description, status, is_default) VALUES (?, ?, ?, ?, ?, 0)',
+                        [code, name.trim(), linkedAccount, description.trim(), status]
+                    );
+                    setSuccessMessage('Expense account created successfully.');
+                    await fetchExpenses();
+                    setIsModalOpen(false);
+                    resetModalFields();
+                    setTimeout(() => setSuccessMessage(''), 4000);
+                } catch (err) {
+                    console.error('[ExpenseAccounts] Error creating expense account:', err);
+                }
+            };
+            createExpense();
+        }
     };
 
     const handleDeleteClick = (expense: ExpenseItem) => {
@@ -168,11 +186,19 @@ export default function ExpenseAccounts() {
             return;
         }
 
-        setExpenses(expenses.filter((ex) => ex.id !== deleteTarget.id));
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-        setSuccessMessage('Expense account deleted successfully.');
-        setTimeout(() => setSuccessMessage(''), 4000);
+        const deleteExpense = async () => {
+            try {
+                await (window as any).electron.invoke('db-query', 'DELETE FROM expense_accounts WHERE id = ?', [deleteTarget.id]);
+                setSuccessMessage('Expense account deleted successfully.');
+                await fetchExpenses();
+                setIsDeleteModalOpen(false);
+                setDeleteTarget(null);
+                setTimeout(() => setSuccessMessage(''), 4000);
+            } catch (err) {
+                console.error('[ExpenseAccounts] Error deleting expense account:', err);
+            }
+        };
+        deleteExpense();
     };
 
     const filteredExpenses = expenses.filter((ex) => {

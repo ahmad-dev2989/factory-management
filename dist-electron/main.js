@@ -1,6 +1,10 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { initializeDatabase, closeDatabase } from './database/database.js';
+import { registerDatabaseIPCHandlers } from './database/ipc.js';
+import { registerStorageIPCHandlers } from './storage/storageIpc.js';
+import { registerBackupIPCHandlers } from './storage/backupIpc.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let mainWindow = null;
@@ -24,6 +28,7 @@ function createWindow() {
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
+            sandbox: false, // Required for ESM imports in preload
             nodeIntegration: false,
         },
     });
@@ -42,8 +47,18 @@ function createWindow() {
         mainWindow = null;
     });
 }
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    try {
+        await initializeDatabase();
+        console.log('[Database] Database startup initialization complete.');
+    }
+    catch (error) {
+        console.error('[Database] Critical database initialization failure on startup:', error);
+    }
+    registerDatabaseIPCHandlers();
+    registerStorageIPCHandlers();
     createWindow();
+    registerBackupIPCHandlers(mainWindow);
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -55,16 +70,6 @@ app.on('window-all-closed', () => {
         app.quit();
     }
 });
-// Setup future-proof IPC handlers for database, file storage, and printing
-ipcMain.handle('db-query', async (event, query, params) => {
-    console.log(`[IPC] db-query: ${query}`);
-    return { success: true, message: 'SQLite Placeholder' };
-});
-ipcMain.handle('file-save', async (event, filePath, content) => {
-    console.log(`[IPC] file-save: ${filePath}`);
-    return { success: true };
-});
-ipcMain.handle('file-read', async (event, filePath) => {
-    console.log(`[IPC] file-read: ${filePath}`);
-    return { success: true, content: '' };
+app.on('will-quit', () => {
+    closeDatabase();
 });

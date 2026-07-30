@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Factory, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
-export default function Login({ adminPassword = 'admin' }: { adminPassword?: string }) {
+export default function Login(_props: { adminPassword?: string }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -10,13 +10,30 @@ export default function Login({ adminPassword = 'admin' }: { adminPassword?: str
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === adminPassword) {
-      setError('');
-      navigate('/settings');
-    } else {
-      setError('Invalid username or password.');
+    try {
+      const users = await (window as any).electron.invoke(
+        'db-query',
+        'SELECT * FROM users WHERE username = ? AND password = ? AND status = "Active"',
+        [username.trim(), password]
+      );
+
+      if (users && users.length > 0) {
+        const now = new Date().toLocaleString();
+        await (window as any).electron.invoke(
+          'db-query',
+          'UPDATE users SET last_login = ? WHERE id = ?',
+          [now, users[0].id]
+        );
+        setError('');
+        navigate('/settings');
+      } else {
+        setError('Invalid username or password.');
+      }
+    } catch (err) {
+      console.error('[Login] Authentication error:', err);
+      setError('Database connection error.');
     }
   };
 
