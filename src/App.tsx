@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Settings from './pages/Settings';
 import CompanyProfile from './pages/CompanyProfile';
 import ChangePassword from './pages/ChangePassword';
+import UserManagement from './pages/UserManagement';
 
 export default function App() {
   const [adminPassword, setAdminPassword] = useState('admin');
@@ -18,6 +19,7 @@ export default function App() {
           path="/change-password" 
           element={<ChangePassword adminPassword={adminPassword} setAdminPassword={setAdminPassword} />} 
         />
+        <Route path="/user-management" element={<UserManagement />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
