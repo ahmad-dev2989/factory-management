@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Factory, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
-export default function Login() {
+export default function Login({ adminPassword = 'admin' }: { adminPassword?: string }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -12,7 +12,7 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin') {
+    if (username === 'admin' && password === adminPassword) {
       setError('');
       navigate('/settings');
     } else {
