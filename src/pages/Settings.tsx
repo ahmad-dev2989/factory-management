@@ -208,7 +208,7 @@ export default function Settings() {
           <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
             LB
           </div>
-          
+
           <span className="font-semibold text-lg tracking-wide">
             Factory Management & Accounting System
           </span>
@@ -236,8 +236,8 @@ export default function Settings() {
               </div>
               <span className="text-sm font-semibold">Admin</span>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleLogout}
               className="hover:bg-white/10 p-1.5 rounded transition-colors cursor-pointer focus:outline-none flex items-center justify-center text-white/90 hover:text-white"
               title="Logout"
@@ -276,6 +276,8 @@ export default function Settings() {
                       navigate('/change-password');
                     } else if (card.title === 'User Accounts') {
                       navigate('/user-management');
+                    } else if (card.title === 'Bank Accounts') {
+                      navigate('/bank-accounts');
                     }
                   }}
                   className="bg-white border border-[#E5E7EB] rounded-[10px] p-7 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] hover:shadow-[0_4px_12px_0_rgba(0,0,0,0.08)] hover:bg-[#EEF5FF] hover:border-[#2F80ED]/30 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[165px]"
