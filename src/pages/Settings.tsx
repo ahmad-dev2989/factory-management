@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ArrowLeft, Home } from 'lucide-react';
 
 // Custom Colored SVG Icons (Desktop Accounting Software Style)
 const CompanyProfileIcon = () => (
@@ -12,6 +12,16 @@ const CompanyProfileIcon = () => (
     <rect x="14" y="16" width="4" height="4" rx="1" fill="#FFFFFF" fillOpacity="0.8" />
     <rect x="20" y="16" width="4" height="4" rx="1" fill="#FFFFFF" fillOpacity="0.8" />
     <rect x="13" y="22" width="6" height="4" fill="#F2C94C" />
+  </svg>
+);
+
+const DashboardCardIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="6" width="24" height="20" rx="2" fill="#2D9CDB" />
+    <rect x="8" y="14" width="3" height="8" rx="0.5" fill="#FFFFFF" fillOpacity="0.8" />
+    <rect x="14" y="10" width="3" height="12" rx="0.5" fill="#FFFFFF" fillOpacity="0.8" />
+    <rect x="20" y="16" width="3" height="6" rx="0.5" fill="#FFFFFF" fillOpacity="0.8" />
+    <circle cx="21" cy="11" r="2.5" fill="#F2C94C" />
   </svg>
 );
 
@@ -201,6 +211,11 @@ export default function Settings() {
 
   const cards = [
     {
+      title: 'Business Dashboard',
+      description: 'Go to Business Dashboard to view interactive metric charts, live revenues, and stock alerts',
+      icon: DashboardCardIcon,
+    },
+    {
       title: 'Company Profile',
       description: 'Manage company information',
       icon: CompanyProfileIcon,
@@ -298,6 +313,14 @@ export default function Settings() {
       <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
         {/* Left Side */}
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
           {/* LB Logo Placeholder */}
           <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
             LB
@@ -305,6 +328,19 @@ export default function Settings() {
 
           <span className="font-semibold text-lg tracking-wide">
             Factory App
+          </span>
+        </div>
+
+        {/* Navigation Middle Bar */}
+        <div className="flex items-center gap-1.5 text-sm font-semibold">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-3 py-1.5 hover:bg-white/10 text-white/90 hover:text-white rounded-[6px] transition-all flex items-center gap-1.5 cursor-pointer focus:outline-none animate-pulse-subtle"
+          >
+            <Home className="w-4 h-4" /> Business Dashboard
+          </button>
+          <span className="bg-white/10 px-3 py-1.5 rounded-[6px] tracking-wide text-white select-none">
+            ⚙ System Settings
           </span>
         </div>
 
@@ -364,7 +400,9 @@ export default function Settings() {
                 <div
                   key={index}
                   onClick={() => {
-                    if (card.title === 'Company Profile') {
+                    if (card.title === 'Business Dashboard') {
+                      navigate('/dashboard');
+                    } else if (card.title === 'Company Profile') {
                       navigate('/company-profile');
                     } else if (card.title === 'Change Password') {
                       navigate('/change-password');
