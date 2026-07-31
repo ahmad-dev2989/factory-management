@@ -404,7 +404,7 @@ export default function Reports() {
 
       } else if (activeTab === 'stock') {
         const sql = `
-          SELECT p.id, p.name, p.sku, p.stock, p.min_stock, p.purchase_price, p.sale_price,
+          SELECT p.id, p.name, p.sku, p.stock, p.minimum_stock AS min_stock, p.purchase_price, p.sale_price,
                  (p.stock * p.purchase_price) AS inventory_value, c.name AS category_name
           FROM products p
           LEFT JOIN product_categories c ON p.category_id = c.id
@@ -478,50 +478,50 @@ export default function Reports() {
     const q = searchQuery.toLowerCase().trim();
 
     if (activeTab === 'sales') {
-      return salesReportData.filter((r) => {
+      return Array.isArray(salesReportData) ? salesReportData.filter((r) => {
         if (!q) return true;
         return (
           r.invoice_number.toLowerCase().includes(q) ||
           (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
           r.payment_method.toLowerCase().includes(q)
         );
-      });
+      }) : [];
     }
 
     if (activeTab === 'purchases') {
-      return purchaseReportData.filter((r) => {
+      return Array.isArray(purchaseReportData) ? purchaseReportData.filter((r) => {
         if (!q) return true;
         return (
           r.purchase_number.toLowerCase().includes(q) ||
           r.vendor_name.toLowerCase().includes(q) ||
           r.payment_method.toLowerCase().includes(q)
         );
-      });
+      }) : [];
     }
 
     if (activeTab === 'cashbook') {
-      return cashbookData.filter((r) => {
+      return Array.isArray(cashbookData) ? cashbookData.filter((r) => {
         if (!q) return true;
         return (
-          r.voucher_no.toLowerCase().includes(r) ||
+          r.voucher_no.toLowerCase().includes(q) ||
           r.description.toLowerCase().includes(q) ||
           (r.account_name && r.account_name.toLowerCase().includes(q))
         );
-      });
+      }) : [];
     }
 
     if (activeTab === 'customer') {
-      return customerLedgerData.filter((r) => {
+      return Array.isArray(customerLedgerData) ? customerLedgerData.filter((r) => {
         if (!q) return true;
         return (
           r.ref.toLowerCase().includes(q) ||
           r.description.toLowerCase().includes(q)
         );
-      });
+      }) : [];
     }
 
     if (activeTab === 'stock') {
-      return stockReportData.filter((r) => {
+      return Array.isArray(stockReportData) ? stockReportData.filter((r) => {
         let matchQuery = true;
         if (q) {
           matchQuery = r.name.toLowerCase().includes(q) || (r.sku && r.sku.toLowerCase().includes(q));
@@ -540,7 +540,7 @@ export default function Reports() {
         }
 
         return matchQuery && matchCat && matchStatus;
-      });
+      }) : [];
     }
 
     return [];
