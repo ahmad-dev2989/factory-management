@@ -249,6 +249,65 @@ function migrateToV5(db) {
         });
     });
 }
+function migrateToV6(db) {
+    return new Promise((resolve, reject) => {
+        console.log('[Database] Migrating database to version 6 (Creating Indexes)...');
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+            const indexStatements = [
+                'CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id)',
+                'CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)',
+                'CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date)',
+                'CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id)',
+                'CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status)',
+                'CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id)',
+                'CREATE INDEX IF NOT EXISTS idx_sale_items_product_id ON sale_items(product_id)',
+                'CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(date)',
+                'CREATE INDEX IF NOT EXISTS idx_purchases_status ON purchases(status)',
+                'CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase_id ON purchase_items(purchase_id)',
+                'CREATE INDEX IF NOT EXISTS idx_purchase_items_product_id ON purchase_items(product_id)',
+                'CREATE INDEX IF NOT EXISTS idx_cash_in_date ON cash_in(date)',
+                'CREATE INDEX IF NOT EXISTS idx_cash_in_status ON cash_in(status)',
+                'CREATE INDEX IF NOT EXISTS idx_cash_out_date ON cash_out(date)',
+                'CREATE INDEX IF NOT EXISTS idx_cash_out_status ON cash_out(status)'
+            ];
+            let errorOccurred = false;
+            let pending = indexStatements.length;
+            if (pending === 0) {
+                db.run('COMMIT', () => resolve());
+                return;
+            }
+            for (const sql of indexStatements) {
+                db.run(sql, (err) => {
+                    if (err && !errorOccurred) {
+                        errorOccurred = true;
+                        console.error('[Database] Failed to create index:', sql, err);
+                        db.run('ROLLBACK', () => reject(err));
+                        return;
+                    }
+                    pending--;
+                    if (pending === 0 && !errorOccurred) {
+                        db.run('PRAGMA user_version = 6', (versionErr) => {
+                            if (versionErr) {
+                                db.run('ROLLBACK', () => reject(versionErr));
+                                return;
+                            }
+                            db.run('COMMIT', (commitErr) => {
+                                if (commitErr) {
+                                    reject(commitErr);
+                                }
+                                else {
+                                    console.log('[Database] Indexes created and user_version updated to 6.');
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+        });
+    });
+}
 export function runMigrations(db) {
     return new Promise((resolve, reject) => {
         // Query current user_version
@@ -280,6 +339,10 @@ export function runMigrations(db) {
                 if (currentVersion < 5) {
                     await migrateToV5(db);
                     currentVersion = 5;
+                }
+                if (currentVersion < 6) {
+                    await migrateToV6(db);
+                    currentVersion = 6;
                 }
                 console.log(`[Database] Database schema version is now: ${currentVersion}`);
                 resolve();

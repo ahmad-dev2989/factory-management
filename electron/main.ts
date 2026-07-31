@@ -13,7 +13,14 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
-function createWindow() {
+interface WindowState {
+  x?: number;
+  y?: number;
+  width: number;
+  height: number;
+}
+
+function createWindow(state: WindowState) {
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   const iconPath = isDev
     ? path.join(__dirname, '../public/app-icons/icon.png')
@@ -22,11 +29,13 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     title: 'Factory App',
     icon: iconPath,
-    width: 1280,
-    height: 720,
+    x: state.x,
+    y: state.y,
+    width: state.width,
+    height: state.height,
     minWidth: 1280,
     minHeight: 720,
-    center: true,
+    center: state.x === undefined,
     resizable: true,
     maximizable: true,
     backgroundColor: '#ffffff',
@@ -51,6 +60,29 @@ function createWindow() {
     e.preventDefault();
   });
 
+  const saveState = async () => {
+    try {
+      if (!mainWindow) return;
+      const bounds = mainWindow.getBounds();
+      const statePath = path.join(app.getPath('userData'), 'window-state.json');
+      await fs.writeFile(
+        statePath,
+        JSON.stringify({
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        }),
+        'utf8'
+      );
+    } catch (err) {
+      console.error('[Main] Failed to save window state:', err);
+    }
+  };
+
+  mainWindow.on('resize', saveState);
+  mainWindow.on('move', saveState);
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -66,13 +98,27 @@ app.whenReady().then(async () => {
   
   registerDatabaseIPCHandlers();
   registerStorageIPCHandlers();
-  createWindow();
+
+  // Load saved window state bounds
+  let windowState: WindowState = { width: 1280, height: 720 };
+  try {
+    const statePath = path.join(app.getPath('userData'), 'window-state.json');
+    const stateData = await fs.readFile(statePath, 'utf8');
+    const parsed = JSON.parse(stateData);
+    if (parsed.width && parsed.height) {
+      windowState = parsed;
+    }
+  } catch (err) {
+    // Fail silently when settings file is absent
+  }
+
+  createWindow(windowState);
   registerBackupIPCHandlers(mainWindow!);
   registerUpdateIPCHandlers(mainWindow!);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow(windowState);
     }
   });
 });

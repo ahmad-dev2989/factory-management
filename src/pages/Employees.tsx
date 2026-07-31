@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, ArrowLeft, Users, RefreshCw } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 interface EmployeeItem {
     id: number;
@@ -32,8 +34,13 @@ export default function Employees() {
 
     // Initial Data State
     const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const { showToast, confirm } = useNotification();
 
     const fetchEmployees = async () => {
+        setLoading(true);
         try {
             const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM employees');
             if (raw && !raw.error) {
@@ -61,6 +68,8 @@ export default function Employees() {
             }
         } catch (err) {
             console.error('[Employees] Failed to fetch employees:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -69,8 +78,8 @@ export default function Employees() {
     }, []);
 
 
+    const [inputQuery, setInputQuery] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,9 +105,29 @@ export default function Employees() {
 
     const [modalErrors, setModalErrors] = useState<Record<string, string>>({});
 
-    // Delete Modal State
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<EmployeeItem | null>(null);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearchQuery(inputQuery);
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [inputQuery]);
+
+    useKeyboardShortcuts({
+        onNew: () => handleAddClick(),
+        onSave: () => {
+            if (isModalOpen) {
+                const form = document.getElementById('employee-form') as HTMLFormElement;
+                if (form) form.requestSubmit();
+            }
+        },
+        onSearch: () => {
+            const searchInput = document.getElementById('search-box') as HTMLInputElement;
+            if (searchInput) searchInput.focus();
+        },
+        onEscape: () => {
+            setIsModalOpen(false);
+        }
+    }, [isModalOpen]);
 
     const validateEmail = (emailStr: string) => {
         if (!emailStr) return true;
@@ -158,8 +187,10 @@ export default function Employees() {
         setIsModalOpen(true);
     };
 
-    const handleSaveEmployee = (e: React.FormEvent) => {
+    const handleSaveEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSaving) return;
+
         const newErrors: Record<string, string> = {};
 
         // Validations
@@ -182,73 +213,72 @@ export default function Employees() {
 
         const numericSalary = salary ? Number(salary) : 0;
 
-        if (editingEmployee) {
-            const saveEmployee = async () => {
-                try {
-                    await (window as any).electron.invoke(
-                        'db-query',
-                        'UPDATE employees SET full_name = ?, father_name = ?, cnic = ?, phone = ?, alt_phone = ?, email = ?, address = ?, city = ?, designation = ?, department = ?, joining_date = ?, salary = ?, emergency_contact_name = ?, emergency_contact_number = ?, status = ?, notes = ? WHERE id = ?',
-                        [fullName.trim(), fatherName.trim(), cnic.trim(), phone.trim(), altPhone.trim(), email.trim(), address.trim(), city.trim(), designation.trim(), department.trim(), joiningDate, numericSalary, emergencyContactName.trim(), emergencyContactNumber.trim(), status, notes.trim(), editingEmployee.id]
-                    );
-                    setSuccessMessage('Employee updated successfully.');
+        setIsSaving(true);
+        try {
+            if (editingEmployee) {
+                const res = await (window as any).electron.invoke(
+                    'db-query',
+                    'UPDATE employees SET full_name = ?, father_name = ?, cnic = ?, phone = ?, alt_phone = ?, email = ?, address = ?, city = ?, designation = ?, department = ?, joining_date = ?, salary = ?, emergency_contact_name = ?, emergency_contact_number = ?, status = ?, notes = ? WHERE id = ?',
+                    [fullName.trim(), fatherName.trim(), cnic.trim(), phone.trim(), altPhone.trim(), email.trim(), address.trim(), city.trim(), designation.trim(), department.trim(), joiningDate, numericSalary, emergencyContactName.trim(), emergencyContactNumber.trim(), status, notes.trim(), editingEmployee.id]
+                );
+                if (res && !res.error) {
+                    showToast('Employee updated successfully.', 'success');
                     await fetchEmployees();
                     setIsModalOpen(false);
                     resetModalFields();
-                    setTimeout(() => setSuccessMessage(''), 4000);
-                } catch (err) {
-                    console.error('[Employees] Error saving employee:', err);
+                } else {
+                    showToast('Database error occurred while updating employee.', 'error');
                 }
-            };
-            saveEmployee();
-        } else {
-            const createEmployee = async () => {
-                try {
-                    const res = await (window as any).electron.invoke('db-query', 'SELECT MAX(id) as maxId FROM employees');
-                    const nextId = (res && res[0] && res[0].maxId ? res[0].maxId : 0) + 1;
-                    const code = 'EMP-' + String(nextId).padStart(4, '0');
+            } else {
+                const resMax = await (window as any).electron.invoke('db-query', 'SELECT MAX(id) as maxId FROM employees');
+                const nextId = (resMax && resMax[0] && resMax[0].maxId ? resMax[0].maxId : 0) + 1;
+                const code = 'EMP-' + String(nextId).padStart(4, '0');
 
-                    await (window as any).electron.invoke(
-                        'db-query',
-                        'INSERT INTO employees (emp_code, full_name, father_name, cnic, phone, alt_phone, email, address, city, designation, department, joining_date, salary, emergency_contact_name, emergency_contact_number, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [code, fullName.trim(), fatherName.trim(), cnic.trim(), phone.trim(), altPhone.trim(), email.trim(), address.trim(), city.trim(), designation.trim(), department.trim(), joiningDate, numericSalary, emergencyContactName.trim(), emergencyContactNumber.trim(), status, notes.trim()]
-                    );
-                    setSuccessMessage('Employee created successfully.');
+                const res = await (window as any).electron.invoke(
+                    'db-query',
+                    'INSERT INTO employees (emp_code, full_name, father_name, cnic, phone, alt_phone, email, address, city, designation, department, joining_date, salary, emergency_contact_name, emergency_contact_number, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [code, fullName.trim(), fatherName.trim(), cnic.trim(), phone.trim(), altPhone.trim(), email.trim(), address.trim(), city.trim(), designation.trim(), department.trim(), joiningDate, numericSalary, emergencyContactName.trim(), emergencyContactNumber.trim(), status, notes.trim()]
+                );
+                if (res && !res.error) {
+                    showToast('Employee created successfully.', 'success');
                     await fetchEmployees();
                     setIsModalOpen(false);
                     resetModalFields();
-                    setTimeout(() => setSuccessMessage(''), 4000);
-                } catch (err) {
-                    console.error('[Employees] Error creating employee:', err);
+                } else {
+                    showToast('Database error occurred while creating employee.', 'error');
                 }
-            };
-            createEmployee();
+            }
+        } catch (err) {
+            console.error('[Employees] Error saving employee:', err);
+            showToast('Failed to save employee.', 'error');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleDeleteClick = (emp: EmployeeItem) => {
-        setDeleteTarget(emp);
-        setIsDeleteModalOpen(true);
+        confirm(
+            'Delete Employee',
+            `Are you sure you want to permanently delete employee "${emp.fullName}" (Code: ${emp.empCode})? This action cannot be undone.`,
+            async () => {
+                try {
+                    const res = await (window as any).electron.invoke('db-query', 'DELETE FROM employees WHERE id = ?', [emp.id]);
+                    if (res && !res.error) {
+                        showToast('Employee deleted successfully.', 'success');
+                        await fetchEmployees();
+                    } else {
+                        showToast('Database error: cannot delete employee. This might be due to payroll records linked to this employee.', 'error');
+                    }
+                } catch (err) {
+                    console.error('[Employees] Error deleting employee:', err);
+                    showToast('Failed to delete employee.', 'error');
+                }
+            },
+            { type: 'danger', confirmText: 'Delete' }
+        );
     };
 
-    const handleConfirmDelete = () => {
-        if (!deleteTarget) return;
-
-        const deleteEmployee = async () => {
-            try {
-                await (window as any).electron.invoke('db-query', 'DELETE FROM employees WHERE id = ?', [deleteTarget.id]);
-                setSuccessMessage('Employee deleted successfully.');
-                await fetchEmployees();
-                setIsDeleteModalOpen(false);
-                setDeleteTarget(null);
-                setTimeout(() => setSuccessMessage(''), 4000);
-            } catch (err) {
-                console.error('[Employees] Error deleting employee:', err);
-            }
-        };
-        deleteEmployee();
-    };
-
-    const filteredEmployees = employees.filter((e) => {
+    const filteredEmployees = employees.filter((e: EmployeeItem) => {
         const q = searchQuery.toLowerCase().trim();
         if (!q) return true;
         return (
@@ -337,13 +367,6 @@ export default function Employees() {
             <main className="flex-grow p-8 overflow-y-auto">
                 <div className="max-w-[1400px] w-full mx-auto space-y-4">
 
-                    {successMessage && (
-                        <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold rounded-[8px] flex items-center gap-2 select-none">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            {successMessage}
-                        </div>
-                    )}
-
                     <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-6 space-y-6">
 
                         {/* Toolbar */}
@@ -354,11 +377,22 @@ export default function Employees() {
                                 </span>
                                 <input
                                     type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    id="search-box"
+                                    value={inputQuery}
+                                    onChange={(e) => setInputQuery(e.target.value)}
                                     placeholder="Search by code, name, phone, dept..."
-                                    className="w-full pl-9 pr-4 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
+                                    className="w-full pl-9 pr-9 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
                                 />
+                                {inputQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setInputQuery('')}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B7280] hover:text-[#1F2937] transition-colors focus:outline-none cursor-pointer"
+                                        title="Clear search"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
 
                             <button
@@ -371,10 +405,15 @@ export default function Employees() {
                         </div>
 
                         {/* Desktop Table */}
-                        <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px]">
-                            {filteredEmployees.length > 0 ? (
+                        <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px] max-h-[650px] relative">
+                            {loading ? (
+                                <div className="p-12 text-center text-sm text-gray-500 font-semibold select-none flex flex-col items-center justify-center gap-3 bg-white">
+                                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
+                                    <span>Loading employee records...</span>
+                                </div>
+                            ) : filteredEmployees.length > 0 ? (
                                 <table className="min-w-full divide-y divide-[#E5E7EB] text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none">
+                                    <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none sticky top-0 z-10 shadow-sm border-b">
                                         <tr>
                                             <th className="px-4 py-3.5">Employee ID</th>
                                             <th className="px-4 py-3.5">Employee Code</th>
@@ -388,7 +427,7 @@ export default function Employees() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#E5E7EB] text-[#1F2937] font-medium bg-white">
-                                        {filteredEmployees.map((emp) => (
+                                        {filteredEmployees.map((emp: EmployeeItem) => (
                                             <tr key={emp.id} className="hover:bg-[#F6F8FB]/50 transition-colors">
                                                 <td className="px-4 py-4 text-[#6B7280]">{emp.id}</td>
                                                 <td className="px-4 py-4 font-semibold text-[#2F80ED]">{emp.empCode}</td>
@@ -427,8 +466,12 @@ export default function Employees() {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div className="p-8 text-center text-[#6B7280] text-sm font-semibold select-none bg-white">
-                                    No employees found.
+                                <div className="p-12 text-center text-[#6B7280] text-sm font-semibold select-none bg-white flex flex-col items-center justify-center gap-3">
+                                    <Users className="w-12 h-12 text-gray-300 animate-pulse" />
+                                    <div>
+                                        <h3 className="text-gray-900 font-bold">No Employees Found</h3>
+                                        <p className="text-xs text-gray-500 mt-1">There are no employee records matching your active filter query. Click "Add Employee" to create one.</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -448,7 +491,7 @@ export default function Employees() {
                                     {editingEmployee ? 'Edit Employee' : 'Add Employee'}
                                 </h3>
                                 <span className="bg-[#EEF5FF] text-[#2F80ED] border border-[#2F80ED]/20 px-2 py-0.5 rounded text-xs font-bold">
-                                    {editingEmployee ? editingEmployee.empCode : generateEmpCode(Math.max(...employees.map((e) => e.id), 0) + 1)}
+                                    {editingEmployee ? editingEmployee.empCode : generateEmpCode(Math.max(...employees.map((e: EmployeeItem) => e.id), 0) + 1)}
                                 </span>
                             </div>
                             <button
@@ -460,7 +503,7 @@ export default function Employees() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveEmployee} className="flex flex-col flex-grow overflow-hidden mt-4">
+                        <form id="employee-form" onSubmit={handleSaveEmployee} className="flex flex-col flex-grow overflow-hidden mt-4">
                             <div className="flex-grow overflow-y-auto pr-2 pb-4 space-y-6">
 
                                 {/* Personal Information */}
@@ -710,15 +753,17 @@ export default function Employees() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                                 >
-                                    Save Employee
+                                    {isSaving ? 'Saving...' : 'Save Employee'}
                                 </button>
                             </div>
                         </form>
@@ -726,41 +771,7 @@ export default function Employees() {
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
-            {isDeleteModalOpen && deleteTarget && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-sm w-full p-6 space-y-5">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-full bg-red-50 text-red-600">
-                                <AlertTriangle className="w-5 h-5" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <h3 className="text-base font-bold text-[#1F2937]">Delete Employee</h3>
-                                <p className="text-sm text-[#6B7280]">
-                                    Are you sure you want to delete <strong className="text-[#1F2937]">{deleteTarget.fullName} ({deleteTarget.empCode})</strong>? This action cannot be undone.
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E7EB]">
-                            <button
-                                type="button"
-                                onClick={() => setIsDeleteModalOpen(false)}
-                                className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmDelete}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-[6px] transition-colors cursor-pointer shadow-sm"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
         </div>
     );

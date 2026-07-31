@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, ArrowLeft, RefreshCw } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 interface AccountItem {
     id: number;
     name: string;
@@ -26,8 +28,13 @@ export default function BankAccounts() {
 
     // Initial Data State
     const [accounts, setAccounts] = useState<AccountItem[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const { showToast, confirm } = useNotification();
 
     const fetchAccounts = async () => {
+        setLoading(true);
         try {
             const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM bank_accounts');
             if (raw && !raw.error) {
@@ -50,6 +57,8 @@ export default function BankAccounts() {
             }
         } catch (err) {
             console.error('[BankAccounts] Failed to fetch accounts:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -57,8 +66,8 @@ export default function BankAccounts() {
         fetchAccounts();
     }, []);
 
+    const [inputQuery, setInputQuery] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,10 +87,29 @@ export default function BankAccounts() {
 
     const [modalErrors, setModalErrors] = useState<Record<string, string>>({});
 
-    // Delete Modal State
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<AccountItem | null>(null);
-    const [deleteError, setDeleteError] = useState('');
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearchQuery(inputQuery);
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [inputQuery]);
+
+    useKeyboardShortcuts({
+        onNew: () => handleAddClick(),
+        onSave: () => {
+            if (isModalOpen) {
+                const form = document.getElementById('account-form') as HTMLFormElement;
+                if (form) form.requestSubmit();
+            }
+        },
+        onSearch: () => {
+            const searchInput = document.getElementById('search-box') as HTMLInputElement;
+            if (searchInput) searchInput.focus();
+        },
+        onEscape: () => {
+            setIsModalOpen(false);
+        }
+    }, [isModalOpen]);
 
     const formatBalance = (currency: string, amount: number) => {
         return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -123,15 +151,17 @@ export default function BankAccounts() {
         setIsModalOpen(true);
     };
 
-    const handleSaveAccount = (e: React.FormEvent) => {
+    const handleSaveAccount = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSaving) return;
+
         const newErrors: Record<string, string> = {};
 
         if (!name.trim()) {
             newErrors.name = 'Account Name is required';
         } else {
             const nameExists = accounts.some(
-                (a) =>
+                (a: AccountItem) =>
                     a.name.toLowerCase() === name.trim().toLowerCase() &&
                     (!editingAccount || a.id !== editingAccount.id)
             );
@@ -151,82 +181,76 @@ export default function BankAccounts() {
 
         const numericOpeningBalance = Number(openingBalance) || 0;
 
-        if (editingAccount) {
-            const balanceDifference = numericOpeningBalance - editingAccount.openingBalance;
-            const newCurrentBalance = editingAccount.currentBalance + balanceDifference;
+        setIsSaving(true);
+        try {
+            if (editingAccount) {
+                const balanceDifference = numericOpeningBalance - editingAccount.openingBalance;
+                const newCurrentBalance = editingAccount.currentBalance + balanceDifference;
 
-            const saveAccount = async () => {
-                try {
-                    await (window as any).electron.invoke(
-                        'db-query',
-                        'UPDATE bank_accounts SET name = ?, type = ?, currency = ?, bank_name = ?, account_number = ?, branch_name = ?, iban = ?, opening_balance = ?, current_balance = ?, status = ?, notes = ? WHERE id = ?',
-                        [name.trim(), type, currency, bankName.trim(), accountNumber.trim(), branchName.trim(), iban.trim(), numericOpeningBalance, newCurrentBalance, status, notes.trim(), editingAccount.id]
-                    );
-                    setSuccessMessage('Account updated successfully.');
+                const res = await (window as any).electron.invoke(
+                    'db-query',
+                    'UPDATE bank_accounts SET name = ?, type = ?, currency = ?, bank_name = ?, account_number = ?, branch_name = ?, iban = ?, opening_balance = ?, current_balance = ?, status = ?, notes = ? WHERE id = ?',
+                    [name.trim(), type, currency, bankName.trim(), accountNumber.trim(), branchName.trim(), iban.trim(), numericOpeningBalance, newCurrentBalance, status, notes.trim(), editingAccount.id]
+                );
+                if (res && !res.error) {
+                    showToast('Account updated successfully.', 'success');
                     await fetchAccounts();
                     setIsModalOpen(false);
                     resetModalFields();
-                    setTimeout(() => setSuccessMessage(''), 4000);
-                } catch (err) {
-                    console.error('[BankAccounts] Error saving account:', err);
+                } else {
+                    showToast('Database error occurred while updating bank account.', 'error');
                 }
-            };
-            saveAccount();
-        } else {
-            const createAccount = async () => {
-                try {
-                    await (window as any).electron.invoke(
-                        'db-query',
-                        'INSERT INTO bank_accounts (name, type, currency, bank_name, account_number, branch_name, iban, opening_balance, current_balance, status, notes, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [name.trim(), type, currency, bankName.trim(), accountNumber.trim(), branchName.trim(), iban.trim(), numericOpeningBalance, numericOpeningBalance, status, notes.trim(), 0]
-                    );
-                    setSuccessMessage('Account created successfully.');
+            } else {
+                const res = await (window as any).electron.invoke(
+                    'db-query',
+                    'INSERT INTO bank_accounts (name, type, currency, bank_name, account_number, branch_name, iban, opening_balance, current_balance, status, notes, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [name.trim(), type, currency, bankName.trim(), accountNumber.trim(), branchName.trim(), iban.trim(), numericOpeningBalance, numericOpeningBalance, status, notes.trim(), 0]
+                );
+                if (res && !res.error) {
+                    showToast('Account created successfully.', 'success');
                     await fetchAccounts();
                     setIsModalOpen(false);
                     resetModalFields();
-                    setTimeout(() => setSuccessMessage(''), 4000);
-                } catch (err) {
-                    console.error('[BankAccounts] Error creating account:', err);
+                } else {
+                    showToast('Database error occurred while creating bank account.', 'error');
                 }
-            };
-            createAccount();
+            }
+        } catch (err) {
+            console.error('[BankAccounts] Error saving account:', err);
+            showToast('Failed to save account.', 'error');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleDeleteClick = (account: AccountItem) => {
-        setDeleteTarget(account);
-        setIsDeleteModalOpen(true);
         if (account.isDefault) {
-            setDeleteError('Default accounts cannot be deleted.');
-        } else {
-            setDeleteError('');
-        }
-    };
-
-    const handleConfirmDelete = () => {
-        if (!deleteTarget) return;
-
-        if (deleteTarget.isDefault) {
-            setDeleteError('Default accounts cannot be deleted.');
+            showToast('Default accounts cannot be deleted.', 'error');
             return;
         }
 
-        const deleteAccount = async () => {
-            try {
-                await (window as any).electron.invoke('db-query', 'DELETE FROM bank_accounts WHERE id = ?', [deleteTarget.id]);
-                setSuccessMessage('Account deleted successfully.');
-                await fetchAccounts();
-                setIsDeleteModalOpen(false);
-                setDeleteTarget(null);
-                setTimeout(() => setSuccessMessage(''), 4000);
-            } catch (err) {
-                console.error('[BankAccounts] Error deleting account:', err);
-            }
-        };
-        deleteAccount();
+        confirm(
+            'Delete Bank Account',
+            `Are you sure you want to permanently delete account "${account.name}" (${account.bankName})? This action cannot be undone.`,
+            async () => {
+                try {
+                    const res = await (window as any).electron.invoke('db-query', 'DELETE FROM bank_accounts WHERE id = ?', [account.id]);
+                    if (res && !res.error) {
+                        showToast('Account deleted successfully.', 'success');
+                        await fetchAccounts();
+                    } else {
+                        showToast('Database error: cannot delete account. This might be due to existing transactions or vouchers linked to this account.', 'error');
+                    }
+                } catch (err) {
+                    console.error('[BankAccounts] Error deleting account:', err);
+                    showToast('Failed to delete account.', 'error');
+                }
+            },
+            { type: 'danger', confirmText: 'Delete' }
+        );
     };
 
-    const filteredAccounts = accounts.filter((a) => {
+    const filteredAccounts = accounts.filter((a: AccountItem) => {
         const q = searchQuery.toLowerCase().trim();
         if (!q) return true;
         return (
@@ -312,13 +336,6 @@ export default function BankAccounts() {
             <main className="flex-grow p-8 overflow-y-auto">
                 <div className="max-w-[1400px] w-full mx-auto space-y-4">
 
-                    {successMessage && (
-                        <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold rounded-[8px] flex items-center gap-2 select-none">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            {successMessage}
-                        </div>
-                    )}
-
                     <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-6 space-y-6">
 
                         <div className="flex items-center justify-between gap-4">
@@ -328,11 +345,22 @@ export default function BankAccounts() {
                                 </span>
                                 <input
                                     type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    id="search-box"
+                                    value={inputQuery}
+                                    onChange={(e) => setInputQuery(e.target.value)}
                                     placeholder="Search by account name or type..."
-                                    className="w-full pl-9 pr-4 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
+                                    className="w-full pl-9 pr-9 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
                                 />
+                                {inputQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setInputQuery('')}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B7280] hover:text-[#1F2937] transition-colors focus:outline-none cursor-pointer"
+                                        title="Clear search"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
 
                             <button
@@ -344,10 +372,15 @@ export default function BankAccounts() {
                             </button>
                         </div>
 
-                        <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px]">
-                            {filteredAccounts.length > 0 ? (
+                        <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px] max-h-[650px] relative">
+                            {loading ? (
+                                <div className="p-12 text-center text-sm text-gray-500 font-semibold select-none flex flex-col items-center justify-center gap-3 bg-white">
+                                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
+                                    <span>Loading bank records...</span>
+                                </div>
+                            ) : filteredAccounts.length > 0 ? (
                                 <table className="min-w-full divide-y divide-[#E5E7EB] text-left text-sm">
-                                    <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none">
+                                    <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none sticky top-0 z-10 shadow-sm border-b">
                                         <tr>
                                             <th className="px-6 py-3.5">Account ID</th>
                                             <th className="px-6 py-3.5">Account Name</th>
@@ -360,7 +393,7 @@ export default function BankAccounts() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#E5E7EB] text-[#1F2937] font-medium bg-white">
-                                        {filteredAccounts.map((account) => (
+                                        {filteredAccounts.map((account: AccountItem) => (
                                             <tr key={account.id} className="hover:bg-[#F6F8FB]/50 transition-colors">
                                                 <td className="px-6 py-4">ACC-{account.id.toString().padStart(4, '0')}</td>
                                                 <td className="px-6 py-4 font-semibold text-[#2F80ED]">{account.name}</td>
@@ -398,8 +431,12 @@ export default function BankAccounts() {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div className="p-8 text-center text-[#6B7280] text-sm font-semibold select-none bg-white">
-                                    No accounts found.
+                                <div className="p-12 text-center text-[#6B7280] text-sm font-semibold select-none bg-white flex flex-col items-center justify-center gap-3">
+                                    <RefreshCw className="w-12 h-12 text-gray-300" />
+                                    <div>
+                                        <h3 className="text-gray-900 font-bold">No Accounts Found</h3>
+                                        <p className="text-xs text-gray-500 mt-1">There are no financial accounts matching your search inputs. Click "Add Account" to configure one.</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -426,7 +463,7 @@ export default function BankAccounts() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveAccount} className="flex flex-col flex-grow overflow-hidden mt-4">
+                        <form id="account-form" onSubmit={handleSaveAccount} className="flex flex-col flex-grow overflow-hidden mt-4">
                             <div className="flex-grow overflow-y-auto pr-2 pb-4 space-y-6">
 
                                 {/* Basic Info Row */}
@@ -587,15 +624,17 @@ export default function BankAccounts() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer focus:outline-none"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm focus:outline-none"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                                 >
-                                    Save Account
+                                    {isSaving ? 'Saving...' : 'Save Account'}
                                 </button>
                             </div>
                         </form>
@@ -603,50 +642,7 @@ export default function BankAccounts() {
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
-            {isDeleteModalOpen && deleteTarget && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-sm w-full p-6 space-y-5">
-                        <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-full ${deleteError ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}`}>
-                                <AlertTriangle className="w-5 h-5" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <h3 className="text-base font-bold text-[#1F2937]">
-                                    {deleteError ? 'Action Blocked' : 'Delete Account'}
-                                </h3>
-                                <p className="text-sm text-[#6B7280]">
-                                    {deleteError ? (
-                                        <span className="text-red-600 font-semibold">{deleteError}</span>
-                                    ) : (
-                                        <span>Are you sure you want to delete <strong className="text-[#1F2937]">{deleteTarget.name}</strong>? This action cannot be undone.</span>
-                                    )}
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E7EB]">
-                            <button
-                                type="button"
-                                onClick={() => setIsDeleteModalOpen(false)}
-                                className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer focus:outline-none"
-                            >
-                                Cancel
-                            </button>
-
-                            {!deleteError && (
-                                <button
-                                    type="button"
-                                    onClick={handleConfirmDelete}
-                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-[6px] transition-colors cursor-pointer shadow-sm focus:outline-none"
-                                >
-                                    Delete
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
         </div>
     );

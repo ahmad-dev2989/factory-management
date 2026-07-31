@@ -11,15 +11,17 @@ import {
   Edit,
   Trash2,
   X,
-  AlertTriangle,
   ArrowLeft,
   Download,
   Upload,
   RefreshCw,
   Eye,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Package
 } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 interface ProductItem {
   id: number;
@@ -54,12 +56,13 @@ export default function Products() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState('Rs.');
+  const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Notification State
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const { showToast, confirm } = useNotification();
 
   // Filtering State
+  const [inputQuery, setInputQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [filterStockStatus, setFilterStockStatus] = useState<string>('All');
@@ -76,7 +79,6 @@ export default function Products() {
   // Modals State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
@@ -99,9 +101,6 @@ export default function Products() {
   // View Details Modal State
   const [viewingProduct, setViewingProduct] = useState<ProductItem | null>(null);
 
-  // Delete Modal State
-  const [deleteTarget, setDeleteTarget] = useState<ProductItem | null>(null);
-
   // Category Sub-modal Form State
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryError, setCategoryError] = useState('');
@@ -117,6 +116,7 @@ export default function Products() {
 
   // Load Initial Data
   const fetchData = async () => {
+    setLoading(true);
     try {
       // 1. Fetch Preferences
       const prefRes = await (window as any).electron.invoke(
@@ -170,12 +170,41 @@ export default function Products() {
       }
     } catch (err) {
       console.error('[Products] Failed to load initial data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(inputQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [inputQuery]);
+
+  useKeyboardShortcuts({
+    onNew: () => handleAddClick(),
+    onSave: () => {
+      if (isFormModalOpen) {
+        const form = document.getElementById('product-form') as HTMLFormElement;
+        if (form) form.requestSubmit();
+      }
+    },
+    onSearch: () => {
+      const searchInput = document.getElementById('search-box') as HTMLInputElement;
+      if (searchInput) searchInput.focus();
+    },
+    onEscape: () => {
+      setIsFormModalOpen(false);
+      setIsViewModalOpen(false);
+      setIsCategoryModalOpen(false);
+      setIsImportModalOpen(false);
+    }
+  }, [isFormModalOpen]);
 
   // Format Helpers
   const formatCurrency = (amount: number) => {
@@ -232,8 +261,30 @@ export default function Products() {
   };
 
   const handleDeleteClick = (product: ProductItem) => {
-    setDeleteTarget(product);
-    setIsDeleteModalOpen(true);
+    confirm(
+      'Disable Product',
+      `Are you sure you want to set "${product.name}" (SKU: ${product.sku}) status to Inactive? This preserves transaction histories.`,
+      async () => {
+        try {
+          const deleteRes = await (window as any).electron.invoke(
+            'db-query',
+            "UPDATE products SET status = 'Inactive', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [product.id]
+          );
+
+          if (deleteRes && !deleteRes.error) {
+            showToast(`Product "${product.name}" marked as Inactive successfully.`, 'success');
+            fetchData();
+          } else {
+            showToast('Database error occurred while disabling product.', 'error');
+          }
+        } catch (err) {
+          console.error('[Products] Failed to delete product:', err);
+          showToast('Failed to disable product.', 'error');
+        }
+      },
+      { type: 'danger', confirmText: 'Deactivate' }
+    );
   };
 
   const handleAddCategoryClick = () => {
@@ -290,6 +341,8 @@ export default function Products() {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+
     const newErrors: Record<string, string> = {};
 
     // Standard Validation checks
@@ -332,6 +385,7 @@ export default function Products() {
       return;
     }
 
+    setIsSaving(true);
     try {
       // 1. Check duplicate SKU in DB
       const skuCheck = await (window as any).electron.invoke(
@@ -341,6 +395,7 @@ export default function Products() {
       );
       if (skuCheck && skuCheck.length > 0) {
         setFormErrors({ sku: 'This SKU is already assigned to another product' });
+        setIsSaving(false);
         return;
       }
 
@@ -353,6 +408,7 @@ export default function Products() {
         );
         if (barcodeCheck && barcodeCheck.length > 0) {
           setFormErrors({ barcode: 'This Barcode is already assigned to another product' });
+          setIsSaving(false);
           return;
         }
       }
@@ -389,13 +445,11 @@ export default function Products() {
         );
 
         if (updateRes && !updateRes.error) {
-          setSuccessMessage('Product updated successfully.');
+          showToast('Product updated successfully.', 'success');
           setIsFormModalOpen(false);
           fetchData();
-          setTimeout(() => setSuccessMessage(''), 4000);
         } else {
-          setErrorMessage('Database error occurred while updating product.');
-          setTimeout(() => setErrorMessage(''), 4000);
+          showToast('Database error occurred while updating product.', 'error');
         }
       } else {
         // Create
@@ -422,50 +476,24 @@ export default function Products() {
         );
 
         if (createRes && !createRes.error) {
-          setSuccessMessage('Product created successfully.');
+          showToast('Product created successfully.', 'success');
           setIsFormModalOpen(false);
           fetchData();
-          setTimeout(() => setSuccessMessage(''), 4000);
         } else {
-          setErrorMessage('Database error occurred while creating product.');
-          setTimeout(() => setErrorMessage(''), 4000);
+          showToast('Database error occurred while creating product.', 'error');
         }
       }
     } catch (err) {
       console.error('[Products] Failed to save product:', err);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-
-    try {
-      // Perform soft delete (mark status as Inactive)
-      const deleteRes = await (window as any).electron.invoke(
-        'db-query',
-        "UPDATE products SET status = 'Inactive', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [deleteTarget.id]
-      );
-
-      if (deleteRes && !deleteRes.error) {
-        setSuccessMessage(`Product "${deleteTarget.name}" marked as Inactive successfully.`);
-        setIsDeleteModalOpen(false);
-        setDeleteTarget(null);
-        fetchData();
-        setTimeout(() => setSuccessMessage(''), 4000);
-      } else {
-        setErrorMessage('Database error occurred while disabling product.');
-        setTimeout(() => setErrorMessage(''), 4000);
-      }
-    } catch (err) {
-      console.error('[Products] Failed to delete product:', err);
+      showToast('Failed to save product.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleRefresh = () => {
     fetchData();
-    setSuccessMessage('Data refreshed.');
-    setTimeout(() => setSuccessMessage(''), 2000);
+    showToast('Data refreshed.', 'success');
   };
 
   // Sorting Handler
@@ -482,8 +510,7 @@ export default function Products() {
   const handleExportCSV = () => {
     try {
       if (products.length === 0) {
-        setErrorMessage('No products available to export.');
-        setTimeout(() => setErrorMessage(''), 4000);
+        showToast('No products available to export.', 'error');
         return;
       }
 
@@ -543,12 +570,10 @@ export default function Products() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setSuccessMessage('Products exported successfully.');
-      setTimeout(() => setSuccessMessage(''), 4000);
+      showToast('Products exported successfully.', 'success');
     } catch (err) {
       console.error('[Products] Failed to export CSV:', err);
-      setErrorMessage('Export failed.');
-      setTimeout(() => setErrorMessage(''), 4000);
+      showToast('Export failed.', 'error');
     }
   };
 
@@ -613,8 +638,7 @@ export default function Products() {
 
         const rows = parseCSV(text);
         if (rows.length < 2) {
-          setErrorMessage('Empty or invalid CSV file.');
-          setTimeout(() => setErrorMessage(''), 4000);
+          showToast('Empty or invalid CSV file.', 'error');
           return;
         }
 
@@ -636,8 +660,7 @@ export default function Products() {
         const statusIdx = headers.indexOf('status');
 
         if (skuIdx === -1 || nameIdx === -1) {
-          setErrorMessage('CSV must contain at least "SKU" and "Product Name" columns.');
-          setTimeout(() => setErrorMessage(''), 4000);
+          showToast('CSV must contain at least "SKU" and "Product Name" columns.', 'error');
           return;
         }
 
@@ -802,12 +825,10 @@ export default function Products() {
               details: summaryDetails
             });
             setIsImportModalOpen(true);
-            setSuccessMessage(`Import completed. ${validInserts.length} products added.`);
+            showToast(`Import completed. ${validInserts.length} products added.`, 'success');
             fetchData();
-            setTimeout(() => setSuccessMessage(''), 4000);
           } else {
-            setErrorMessage('Transaction failed during database import.');
-            setTimeout(() => setErrorMessage(''), 4000);
+            showToast('Transaction failed during database import.', 'error');
           }
         } else {
           setImportSummary({
@@ -820,8 +841,7 @@ export default function Products() {
         }
       } catch (err) {
         console.error('[Products] CSV parsing/import error:', err);
-        setErrorMessage('Import failed due to layout parse error.');
-        setTimeout(() => setErrorMessage(''), 4000);
+        showToast('Import failed due to layout parse error.', 'error');
       }
     };
     reader.readAsText(file);
@@ -988,20 +1008,6 @@ export default function Products() {
       {/* Main Content */}
       <main className="flex-grow p-8 overflow-y-auto">
         <div className="max-w-[1500px] w-full mx-auto space-y-4">
-          {/* Notification Alerts */}
-          {successMessage && (
-            <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold rounded-[8px] flex items-center gap-2 select-none shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              {successMessage}
-            </div>
-          )}
-          {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-[8px] flex items-center gap-2 select-none shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-red-500"></span>
-              {errorMessage}
-            </div>
-          )}
-
           {/* Table Container Card */}
           <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-6 space-y-6">
             {/* Search and Filters Toolbar */}
@@ -1014,11 +1020,22 @@ export default function Products() {
                   </span>
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    id="search-box"
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
                     placeholder="Search by SKU, Barcode, Name..."
-                    className="w-full pl-9 pr-4 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
+                    className="w-full pl-9 pr-9 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
                   />
+                  {inputQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setInputQuery('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B7280] hover:text-[#1F2937] transition-colors focus:outline-none cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Operations Buttons */}
@@ -1125,10 +1142,15 @@ export default function Products() {
             </div>
 
             {/* Desktop Products Table */}
-            <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px]">
-              {paginatedProducts.length > 0 ? (
+            <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px] max-h-[650px] relative">
+              {loading ? (
+                <div className="p-12 text-center text-sm text-gray-500 font-semibold select-none flex flex-col items-center justify-center gap-3 bg-white">
+                  <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
+                  <span>Loading inventory records...</span>
+                </div>
+              ) : paginatedProducts.length > 0 ? (
                 <table className="min-w-full divide-y divide-[#E5E7EB] text-left text-sm whitespace-nowrap">
-                  <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none">
+                  <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none sticky top-0 z-10 shadow-sm border-b">
                     <tr>
                       <th
                         className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50 transition-colors"
@@ -1260,8 +1282,12 @@ export default function Products() {
                   </tbody>
                 </table>
               ) : (
-                <div className="p-12 text-center text-[#6B7280] text-sm font-semibold select-none bg-white">
-                  No products found. Add a new product or check filters.
+                <div className="p-12 text-center text-[#6B7280] text-sm font-semibold select-none bg-white flex flex-col items-center justify-center gap-3">
+                  <Package className="w-12 h-12 text-gray-300 animate-pulse" />
+                  <div>
+                    <h3 className="text-gray-900 font-bold">No Products Found</h3>
+                    <p className="text-xs text-gray-500 mt-1">There are no products matching your active criteria. Click "Add Product" to start.</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -1353,7 +1379,7 @@ export default function Products() {
             </div>
 
             {/* Scrollable Form Body */}
-            <form onSubmit={handleSaveProduct} className="flex-grow overflow-y-auto py-5 space-y-6">
+            <form id="product-form" onSubmit={handleSaveProduct} className="flex-grow overflow-y-auto py-5 space-y-6">
               {/* Section: Basic Information */}
               <div>
                 <h4 className="text-xs font-bold text-[#1F2937] uppercase tracking-wider mb-4 border-b border-[#E5E7EB] pb-1.5">
@@ -1614,16 +1640,18 @@ export default function Products() {
               <button
                 type="button"
                 onClick={() => setIsFormModalOpen(false)}
-                className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer focus:outline-none"
+                disabled={isSaving}
+                className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 onClick={handleSaveProduct}
-                className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm focus:outline-none"
+                disabled={isSaving}
+                className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
-                Save Product
+                {isSaving ? 'Saving...' : 'Save Product'}
               </button>
             </div>
           </div>
@@ -1816,45 +1844,7 @@ export default function Products() {
         </div>
       )}
 
-      {/* Delete / Soft-Delete Confirmation Dialog */}
-      {isDeleteModalOpen && deleteTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-3 text-red-500">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-[#1F2937]">Mark Product as Inactive?</h3>
-            </div>
 
-            <p className="text-sm text-gray-600 font-medium">
-              Are you sure you want to disable <strong>{deleteTarget.name}</strong> (SKU: {deleteTarget.sku})? 
-              In accordance with accounting practices, this product will not be permanently deleted. Instead, its status 
-              will be set to <strong>Inactive</strong> to preserve history.
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E7EB]">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setDeleteTarget(null);
-                }}
-                className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-sm font-semibold text-white rounded-[6px]"
-              >
-                Confirm & Deactivate
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* CSV Import Results Summary Modal */}
       {isImportModalOpen && importSummary && (

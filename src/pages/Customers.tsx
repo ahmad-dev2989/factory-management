@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, ArrowLeft, Users, RefreshCw } from 'lucide-react';
+import { useNotification } from '../context/NotificationContext';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 interface CustomerItem {
     id: number;
@@ -33,8 +35,13 @@ export default function Customers() {
 
     // Initial Data State
     const [customers, setCustomers] = useState<CustomerItem[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const { showToast, confirm } = useNotification();
 
     const fetchCustomers = async () => {
+        setLoading(true);
         try {
             const raw = await (window as any).electron.invoke('db-query', 'SELECT * FROM customers');
             if (raw && !raw.error) {
@@ -63,6 +70,8 @@ export default function Customers() {
             }
         } catch (err) {
             console.error('[Customers] Failed to fetch customers:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -70,9 +79,8 @@ export default function Customers() {
         fetchCustomers();
     }, []);
 
-
+    const [inputQuery, setInputQuery] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -99,9 +107,29 @@ export default function Customers() {
 
     const [modalErrors, setModalErrors] = useState<Record<string, string>>({});
 
-    // Delete Modal State
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<CustomerItem | null>(null);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearchQuery(inputQuery);
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [inputQuery]);
+
+    useKeyboardShortcuts({
+        onNew: () => handleAddClick(),
+        onSave: () => {
+            if (isModalOpen) {
+                const form = document.getElementById('customer-form') as HTMLFormElement;
+                if (form) form.requestSubmit();
+            }
+        },
+        onSearch: () => {
+            const searchInput = document.getElementById('search-box') as HTMLInputElement;
+            if (searchInput) searchInput.focus();
+        },
+        onEscape: () => {
+            setIsModalOpen(false);
+        }
+    }, [isModalOpen]);
 
     const formatCurrency = (amount: number) => {
         return `PKR ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -163,8 +191,10 @@ export default function Customers() {
         setIsModalOpen(true);
     };
 
-    const handleSaveCustomer = (e: React.FormEvent) => {
+    const handleSaveCustomer = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSaving) return;
+
         const newErrors: Record<string, string> = {};
 
         // Validations
@@ -172,7 +202,7 @@ export default function Customers() {
             newErrors.companyName = 'Company Name is required';
         } else {
             const nameExists = customers.some(
-                (c) =>
+                (c: CustomerItem) =>
                     c.companyName.toLowerCase() === companyName.trim().toLowerCase() &&
                     (!editingCustomer || c.id !== editingCustomer.id)
             );
@@ -201,72 +231,71 @@ export default function Customers() {
         const numericCreditLimit = creditLimit ? Number(creditLimit) : 0;
         const numericOpeningBalance = Number(openingBalance) || 0;
 
-        if (editingCustomer) {
-            const balanceDifference = numericOpeningBalance - editingCustomer.openingBalance;
-            const newCurrentBalance = editingCustomer.currentBalance + balanceDifference;
+        setIsSaving(true);
+        try {
+            if (editingCustomer) {
+                const balanceDifference = numericOpeningBalance - editingCustomer.openingBalance;
+                const newCurrentBalance = editingCustomer.currentBalance + balanceDifference;
 
-            const saveCustomer = async () => {
-                try {
-                    await (window as any).electron.invoke(
-                        'db-query',
-                        'UPDATE customers SET company_name = ?, contact_person = ?, phone = ?, whatsapp = ?, email = ?, address1 = ?, address2 = ?, city = ?, province = ?, country = ?, postal_code = ?, ntn = ?, business_type = ?, credit_limit = ?, opening_balance = ?, current_balance = ?, status = ?, notes = ? WHERE id = ?',
-                        [companyName.trim(), contactPerson.trim(), phone.trim(), whatsapp.trim(), email.trim(), address1.trim(), address2.trim(), city.trim(), province.trim(), country.trim(), postalCode.trim(), ntn.trim(), businessType, numericCreditLimit, numericOpeningBalance, newCurrentBalance, status, notes.trim(), editingCustomer.id]
-                    );
-                    setSuccessMessage('Customer updated successfully.');
+                const res = await (window as any).electron.invoke(
+                    'db-query',
+                    'UPDATE customers SET company_name = ?, contact_person = ?, phone = ?, whatsapp = ?, email = ?, address1 = ?, address2 = ?, city = ?, province = ?, country = ?, postal_code = ?, ntn = ?, business_type = ?, credit_limit = ?, opening_balance = ?, current_balance = ?, status = ?, notes = ? WHERE id = ?',
+                    [companyName.trim(), contactPerson.trim(), phone.trim(), whatsapp.trim(), email.trim(), address1.trim(), address2.trim(), city.trim(), province.trim(), country.trim(), postalCode.trim(), ntn.trim(), businessType, numericCreditLimit, numericOpeningBalance, newCurrentBalance, status, notes.trim(), editingCustomer.id]
+                );
+                if (res && !res.error) {
+                    showToast('Customer updated successfully.', 'success');
                     await fetchCustomers();
                     setIsModalOpen(false);
                     resetModalFields();
-                    setTimeout(() => setSuccessMessage(''), 4000);
-                } catch (err) {
-                    console.error('[Customers] Error saving customer:', err);
+                } else {
+                    showToast('Database error occurred while saving customer.', 'error');
                 }
-            };
-            saveCustomer();
-        } else {
-            const createCustomer = async () => {
-                try {
-                    await (window as any).electron.invoke(
-                        'db-query',
-                        'INSERT INTO customers (company_name, contact_person, phone, whatsapp, email, address1, address2, city, province, country, postal_code, ntn, business_type, credit_limit, opening_balance, current_balance, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [companyName.trim(), contactPerson.trim(), phone.trim(), whatsapp.trim(), email.trim(), address1.trim(), address2.trim(), city.trim(), province.trim(), country.trim(), postalCode.trim(), ntn.trim(), businessType, numericCreditLimit, numericOpeningBalance, numericOpeningBalance, status, notes.trim()]
-                    );
-                    setSuccessMessage('Customer created successfully.');
+            } else {
+                const res = await (window as any).electron.invoke(
+                    'db-query',
+                    'INSERT INTO customers (company_name, contact_person, phone, whatsapp, email, address1, address2, city, province, country, postal_code, ntn, business_type, credit_limit, opening_balance, current_balance, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [companyName.trim(), contactPerson.trim(), phone.trim(), whatsapp.trim(), email.trim(), address1.trim(), address2.trim(), city.trim(), province.trim(), country.trim(), postalCode.trim(), ntn.trim(), businessType, numericCreditLimit, numericOpeningBalance, numericOpeningBalance, status, notes.trim()]
+                );
+                if (res && !res.error) {
+                    showToast('Customer created successfully.', 'success');
                     await fetchCustomers();
                     setIsModalOpen(false);
                     resetModalFields();
-                    setTimeout(() => setSuccessMessage(''), 4000);
-                } catch (err) {
-                    console.error('[Customers] Error creating customer:', err);
+                } else {
+                    showToast('Database error occurred while creating customer.', 'error');
                 }
-            };
-            createCustomer();
+            }
+        } catch (err) {
+            console.error('[Customers] Error saving customer:', err);
+            showToast('Failed to save customer.', 'error');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleDeleteClick = (customer: CustomerItem) => {
-        setDeleteTarget(customer);
-        setIsDeleteModalOpen(true);
+        confirm(
+            'Delete Customer',
+            `Are you sure you want to permanently delete customer "${customer.companyName}"? This action cannot be undone.`,
+            async () => {
+                try {
+                    const res = await (window as any).electron.invoke('db-query', 'DELETE FROM customers WHERE id = ?', [customer.id]);
+                    if (res && !res.error) {
+                        showToast('Customer deleted successfully.', 'success');
+                        await fetchCustomers();
+                    } else {
+                        showToast('Database error: cannot delete customer. This might be due to existing sales/invoices linked to this customer.', 'error');
+                    }
+                } catch (err) {
+                    console.error('[Customers] Error deleting customer:', err);
+                    showToast('Failed to delete customer.', 'error');
+                }
+            },
+            { type: 'danger', confirmText: 'Delete' }
+        );
     };
 
-    const handleConfirmDelete = () => {
-        if (!deleteTarget) return;
-
-        const deleteCustomer = async () => {
-            try {
-                await (window as any).electron.invoke('db-query', 'DELETE FROM customers WHERE id = ?', [deleteTarget.id]);
-                setSuccessMessage('Customer deleted successfully.');
-                await fetchCustomers();
-                setIsDeleteModalOpen(false);
-                setDeleteTarget(null);
-                setTimeout(() => setSuccessMessage(''), 4000);
-            } catch (err) {
-                console.error('[Customers] Error deleting customer:', err);
-            }
-        };
-        deleteCustomer();
-    };
-
-    const filteredCustomers = customers.filter((c) => {
+    const filteredCustomers = customers.filter((c: CustomerItem) => {
         const q = searchQuery.toLowerCase().trim();
         if (!q) return true;
         return (
@@ -355,13 +384,6 @@ export default function Customers() {
             <main className="flex-grow p-8 overflow-y-auto">
                 <div className="max-w-[1400px] w-full mx-auto space-y-4">
 
-                    {successMessage && (
-                        <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold rounded-[8px] flex items-center gap-2 select-none">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            {successMessage}
-                        </div>
-                    )}
-
                     <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-6 space-y-6">
 
                         {/* Toolbar */}
@@ -372,11 +394,22 @@ export default function Customers() {
                                 </span>
                                 <input
                                     type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    id="search-box"
+                                    value={inputQuery}
+                                    onChange={(e) => setInputQuery(e.target.value)}
                                     placeholder="Search Customers..."
-                                    className="w-full pl-9 pr-4 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
+                                    className="w-full pl-9 pr-9 py-2 bg-[#F6F8FB] border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:bg-white focus:border-[#2F80ED] focus:ring-1 focus:ring-[#2F80ED] transition-all"
                                 />
+                                {inputQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setInputQuery('')}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B7280] hover:text-[#1F2937] transition-colors focus:outline-none cursor-pointer"
+                                        title="Clear search"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
 
                             <button
@@ -389,10 +422,15 @@ export default function Customers() {
                         </div>
 
                         {/* Desktop Table View */}
-                        <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px]">
-                            {filteredCustomers.length > 0 ? (
+                        <div className="overflow-x-auto border border-[#E5E7EB] rounded-[8px] max-h-[650px] relative">
+                            {loading ? (
+                                <div className="p-12 text-center text-sm text-gray-500 font-semibold select-none flex flex-col items-center justify-center gap-3 bg-white">
+                                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
+                                    <span>Loading customer records...</span>
+                                </div>
+                            ) : filteredCustomers.length > 0 ? (
                                 <table className="min-w-full divide-y divide-[#E5E7EB] text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none">
+                                    <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none sticky top-0 z-10 shadow-sm border-b">
                                         <tr>
                                             <th className="px-4 py-3.5">Customer ID</th>
                                             <th className="px-4 py-3.5">Company Name</th>
@@ -407,7 +445,7 @@ export default function Customers() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#E5E7EB] text-[#1F2937] font-medium bg-white">
-                                        {filteredCustomers.map((customer) => (
+                                        {filteredCustomers.map((customer: CustomerItem) => (
                                             <tr key={customer.id} className="hover:bg-[#F6F8FB]/50 transition-colors">
                                                 <td className="px-4 py-4 text-[#6B7280]">CUST-{customer.id.toString().padStart(4, '0')}</td>
                                                 <td className="px-4 py-4 font-semibold text-[#2F80ED]">{customer.companyName}</td>
@@ -447,8 +485,12 @@ export default function Customers() {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div className="p-8 text-center text-[#6B7280] text-sm font-semibold select-none bg-white">
-                                    No customers found.
+                                <div className="p-12 text-center text-[#6B7280] text-sm font-semibold select-none bg-white flex flex-col items-center justify-center gap-3">
+                                    <Users className="w-12 h-12 text-gray-300 animate-pulse" />
+                                    <div>
+                                        <h3 className="text-gray-900 font-bold">No Customers Found</h3>
+                                        <p className="text-xs text-gray-500 mt-1">There are no customers matching your active search filters. Click "Add Customer" to create one.</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -475,7 +517,7 @@ export default function Customers() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveCustomer} className="flex flex-col flex-grow overflow-hidden mt-4">
+                        <form id="customer-form" onSubmit={handleSaveCustomer} className="flex flex-col flex-grow overflow-hidden mt-4">
                             <div className="flex-grow overflow-y-auto pr-2 pb-4 space-y-6">
 
                                 {/* Section: Basic Information */}
@@ -735,15 +777,17 @@ export default function Customers() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-[#2F80ED] hover:bg-[#1B6FD1] text-sm font-semibold text-white rounded-[6px] transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                                 >
-                                    Save Customer
+                                    {isSaving ? 'Saving...' : 'Save Customer'}
                                 </button>
                             </div>
                         </form>
@@ -751,41 +795,7 @@ export default function Customers() {
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
-            {isDeleteModalOpen && deleteTarget && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-sm w-full p-6 space-y-5">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-full bg-red-50 text-red-600">
-                                <AlertTriangle className="w-5 h-5" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <h3 className="text-base font-bold text-[#1F2937]">Delete Customer</h3>
-                                <p className="text-sm text-[#6B7280]">
-                                    Are you sure you want to delete <strong className="text-[#1F2937]">{deleteTarget.companyName}</strong>? This action cannot be undone.
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E7EB]">
-                            <button
-                                type="button"
-                                onClick={() => setIsDeleteModalOpen(false)}
-                                className="px-4 py-2 bg-white border border-[#E5E7EB] hover:bg-[#F6F8FB] text-sm font-semibold text-[#1F2937] rounded-[6px] transition-colors cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmDelete}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-[6px] transition-colors cursor-pointer shadow-sm"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
         </div>
     );
