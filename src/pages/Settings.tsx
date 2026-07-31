@@ -119,6 +119,17 @@ const CashOutIcon = () => (
   </svg>
 );
 
+const ReportsIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="4" width="22" height="24" rx="3" fill="#2F80ED" />
+    <path d="M10 10H22" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    <path d="M10 15H18" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    <path d="M10 20H15" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="22" cy="20" r="4.5" fill="#27AE60" />
+    <path d="M20 20L21.5 21.5L24 19" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const UnitsIcon = () => (
   <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="15" y="6" width="2" height="20" fill="#4F4F4F" />
@@ -228,6 +239,11 @@ export default function Settings() {
       title: 'Cash Out',
       description: 'Record cash/bank payments and expenses',
       icon: CashOutIcon,
+    },
+    {
+      title: 'Reports',
+      description: 'System reporting dashboard (Sales, Purchases, Cash Book, Profit)',
+      icon: ReportsIcon,
     },
     {
       title: 'Customers',
@@ -366,6 +382,8 @@ export default function Settings() {
                       navigate('/cash-in');
                     } else if (card.title === 'Cash Out') {
                       navigate('/cash-out');
+                    } else if (card.title === 'Reports') {
+                      navigate('/reports');
                     } else if (card.title === 'Products') {
                       navigate('/products');
                     } else if (card.title === 'Employees') {

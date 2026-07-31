@@ -13,6 +13,7 @@ import Sales from './pages/Sales';
 import Purchases from './pages/Purchases';
 import CashIn from './pages/CashIn';
 import CashOut from './pages/CashOut';
+import Reports from './pages/Reports';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import ExpenseAccounts from './pages/ExpenseAccounts';
 import LinkedAccounts from './pages/LinkedAccounts';
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/purchases" element={<Purchases />} />
           <Route path="/cash-in" element={<CashIn />} />
           <Route path="/cash-out" element={<CashOut />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/products" element={<Products />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
