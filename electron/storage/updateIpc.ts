@@ -1,7 +1,10 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { checkForUpdates, downloadUpdate, skipVersion } from './updateService.js';
+import { checkForUpdates, downloadUpdate, skipVersion, initializeUpdater } from './updateService.js';
 
 export function registerUpdateIPCHandlers(mainWindow: BrowserWindow): void {
+  // Initialize the updater event listeners
+  initializeUpdater(mainWindow);
+
   // Check for updates asynchronously
   ipcMain.handle('update-check', async () => {
     try {
@@ -15,7 +18,7 @@ export function registerUpdateIPCHandlers(mainWindow: BrowserWindow): void {
   // Start downloading the update
   ipcMain.handle('update-download', async () => {
     try {
-      await downloadUpdate(mainWindow);
+      await downloadUpdate();
       return { success: true };
     } catch (err: any) {
       console.error('[Update IPC] update-download error:', err);

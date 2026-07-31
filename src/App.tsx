@@ -14,32 +14,35 @@ import LinkedAccounts from './pages/LinkedAccounts';
 import SystemPreferences from './pages/SystemPreferences';
 import BackupRestore from './pages/BackupRestore';
 import Splash from './pages/Splash';
+import { UpdateProvider } from './context/UpdateContext';
 
 export default function App() {
   const [adminPassword, setAdminPassword] = useState('admin');
 
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Splash />} />
-        <Route path="/login" element={<Login adminPassword={adminPassword} />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/company-profile" element={<CompanyProfile />} />
-        <Route
-          path="/change-password"
-          element={<ChangePassword adminPassword={adminPassword} setAdminPassword={setAdminPassword} />}
-        />
-        <Route path="/user-management" element={<UserManagement />} />
-        <Route path="/bank-accounts" element={<BankAccounts />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
-        <Route path="/expense-accounts" element={<ExpenseAccounts />} />
-        <Route path="/linked-accounts" element={<LinkedAccounts />} />
-        <Route path="/system-preferences" element={<SystemPreferences />} />
-        <Route path="/backup-restore" element={<BackupRestore />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <UpdateProvider>
+        <Routes>
+          <Route path="/" element={<Splash />} />
+          <Route path="/login" element={<Login adminPassword={adminPassword} />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/company-profile" element={<CompanyProfile />} />
+          <Route
+            path="/change-password"
+            element={<ChangePassword adminPassword={adminPassword} setAdminPassword={setAdminPassword} />}
+          />
+          <Route path="/user-management" element={<UserManagement />} />
+          <Route path="/bank-accounts" element={<BankAccounts />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/employees" element={<Employees />} />
+          <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
+          <Route path="/expense-accounts" element={<ExpenseAccounts />} />
+          <Route path="/linked-accounts" element={<LinkedAccounts />} />
+          <Route path="/system-preferences" element={<SystemPreferences />} />
+          <Route path="/backup-restore" element={<BackupRestore />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </UpdateProvider>
     </Router>
   );
 }

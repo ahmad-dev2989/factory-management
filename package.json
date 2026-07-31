@@ -1,7 +1,7 @@
 {
   "name": "factory-project",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Factory Management",
   "description": "Factory Management & Accounting System",
   "type": "module",
@@ -73,8 +73,9 @@
       "include": "build/installer.nsh"
     },
     "publish": {
-      "provider": "generic",
-      "url": "https://example.com/updates"
+      "provider": "github",
+      "owner": "ahmad-dev2989",
+      "repo": "factory-management"
     }
   }
 }
