@@ -14,6 +14,7 @@ import Purchases from './pages/Purchases';
 import CashIn from './pages/CashIn';
 import CashOut from './pages/CashOut';
 import Reports from './pages/Reports';
+import Dashboard from './pages/Dashboard';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import ExpenseAccounts from './pages/ExpenseAccounts';
 import LinkedAccounts from './pages/LinkedAccounts';
@@ -31,6 +32,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Splash />} />
           <Route path="/login" element={<Login adminPassword={adminPassword} />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/company-profile" element={<CompanyProfile />} />
           <Route

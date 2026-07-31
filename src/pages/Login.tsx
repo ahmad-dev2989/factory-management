@@ -27,7 +27,7 @@ export default function Login(_props: { adminPassword?: string }) {
           [now, users[0].id]
         );
         setError('');
-        navigate('/settings');
+        navigate('/dashboard');
       } else {
         setError('Invalid username or password.');
       }
