@@ -136,3 +136,30 @@ CREATE TABLE IF NOT EXISTS attachments (
   entity_id INTEGER
 );
 `;
+export const SCHEMA_V2 = `
+CREATE TABLE IF NOT EXISTS product_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sku TEXT UNIQUE NOT NULL,
+  barcode TEXT UNIQUE,
+  name TEXT NOT NULL,
+  category_id INTEGER,
+  purchase_price REAL DEFAULT 0,
+  sale_price REAL DEFAULT 0,
+  minimum_sale_price REAL DEFAULT 0,
+  stock REAL DEFAULT 0,
+  minimum_stock REAL DEFAULT 0,
+  unit TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(category_id) REFERENCES product_categories(id) ON DELETE SET NULL
+);
+`;

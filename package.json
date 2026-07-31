@@ -61,7 +61,7 @@
         "portable"
       ],
       "icon": "public/app-icons/icon.ico",
-      "artifactName": "${productName} Setup ${version}.${ext}"
+      "artifactName": "Factory-App-Setup-${version}.${ext}"
     },
     "nsis": {
       "packElevateHelper": false,
@@ -76,7 +76,7 @@
       "include": "build/installer.nsh"
     },
     "portable": {
-      "artifactName": "${productName} Portable ${version}.${ext}"
+      "artifactName": "Factory-App-Portable-${version}.${ext}"
     },
     "publish": {
       "provider": "github",

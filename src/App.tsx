@@ -8,6 +8,7 @@ import UserManagement from './pages/UserManagement';
 import BankAccounts from './pages/BankAccounts';
 import Customers from './pages/Customers';
 import Employees from './pages/Employees';
+import Products from './pages/Products';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import ExpenseAccounts from './pages/ExpenseAccounts';
 import LinkedAccounts from './pages/LinkedAccounts';
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/user-management" element={<UserManagement />} />
           <Route path="/bank-accounts" element={<BankAccounts />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/products" element={<Products />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/chart-of-accounts" element={<ChartOfAccounts />} />
           <Route path="/expense-accounts" element={<ExpenseAccounts />} />

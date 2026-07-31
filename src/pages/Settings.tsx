@@ -171,14 +171,14 @@ export default function Settings() {
       icon: CustomersIcon,
     },
     {
-      title: 'Employees',
-      description: 'Manage employees',
-      icon: EmployeesIcon,
-    },
-    {
       title: 'Products',
       description: 'Manage products',
       icon: ProductsIcon,
+    },
+    {
+      title: 'Employees',
+      description: 'Manage employees',
+      icon: EmployeesIcon,
     },
     {
       title: 'Units',
@@ -294,6 +294,8 @@ export default function Settings() {
                       navigate('/bank-accounts');
                     } else if (card.title === 'Customers') {
                       navigate('/customers');
+                    } else if (card.title === 'Products') {
+                      navigate('/products');
                     } else if (card.title === 'Employees') {
                       navigate('/employees');
                     } else if (card.title === 'Chart of Accounts') {
