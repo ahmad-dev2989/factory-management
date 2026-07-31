@@ -359,4 +359,330 @@ export function registerDatabaseIPCHandlers() {
             });
         });
     });
+    // Transaction IPC Handler for saving a new purchase
+    ipcMain.handle('purchases-create', async (_event, purchase, items) => {
+        return new Promise((resolve) => {
+            const db = getDatabase();
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION', async (err) => {
+                    if (err) {
+                        return resolve({ error: true, message: err.message });
+                    }
+                    try {
+                        const insertPurchaseSql = `
+              INSERT INTO purchases (
+                purchase_number, vendor_name, date, subtotal, discount, 
+                grand_total, paid_amount, remaining_amount, payment_method, 
+                payment_account_id, remarks, status
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
+            `;
+                        db.run(insertPurchaseSql, [
+                            purchase.purchaseNumber,
+                            purchase.vendorName,
+                            purchase.date,
+                            purchase.subtotal,
+                            purchase.discount,
+                            purchase.grandTotal,
+                            purchase.paidAmount,
+                            purchase.remainingAmount,
+                            purchase.paymentMethod,
+                            purchase.paymentAccountId || null,
+                            purchase.remarks || ''
+                        ], function (runErr) {
+                            if (runErr) {
+                                db.run('ROLLBACK');
+                                return resolve({ error: true, message: 'Purchase insert failed: ' + runErr.message });
+                            }
+                            const purchaseId = this.lastID;
+                            const insertItemSql = `
+                INSERT INTO purchase_items (
+                  purchase_id, product_id, quantity, purchase_price, discount, total
+                ) VALUES (?, ?, ?, ?, ?, ?)
+              `;
+                            let itemPromise = Promise.resolve();
+                            items.forEach((item) => {
+                                itemPromise = itemPromise.then(() => {
+                                    return new Promise((itemResolve, itemReject) => {
+                                        db.run(insertItemSql, [
+                                            purchaseId,
+                                            item.productId,
+                                            item.quantity,
+                                            item.purchasePrice,
+                                            item.discount || 0,
+                                            item.total
+                                        ], (itemErr) => {
+                                            if (itemErr)
+                                                return itemReject(itemErr);
+                                            // Increase stock immediately after purchase is saved
+                                            db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.productId], (stockErr) => {
+                                                if (stockErr)
+                                                    return itemReject(stockErr);
+                                                itemResolve();
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                            itemPromise.then(() => {
+                                // Decrease selected account balance by paid amount
+                                if (purchase.paidAmount > 0 && purchase.paymentAccountId) {
+                                    return new Promise((acctResolve, acctReject) => {
+                                        db.run('UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id = ?', [purchase.paidAmount, purchase.paymentAccountId], (acctErr) => {
+                                            if (acctErr)
+                                                return acctReject(acctErr);
+                                            acctResolve();
+                                        });
+                                    });
+                                }
+                                return Promise.resolve();
+                            }).then(() => {
+                                db.run('COMMIT', (commitErr) => {
+                                    if (commitErr) {
+                                        db.run('ROLLBACK');
+                                        return resolve({ error: true, message: 'Commit failed: ' + commitErr.message });
+                                    }
+                                    resolve({ success: true, purchaseId });
+                                });
+                            }).catch((flowErr) => {
+                                db.run('ROLLBACK');
+                                resolve({ error: true, message: flowErr.message || 'Transaction flow error' });
+                            });
+                        });
+                    }
+                    catch (ex) {
+                        db.run('ROLLBACK');
+                        resolve({ error: true, message: ex.message });
+                    }
+                });
+            });
+        });
+    });
+    // Transaction IPC Handler for updating an existing purchase
+    ipcMain.handle('purchases-update', async (_event, purchaseId, purchase, items) => {
+        return new Promise((resolve) => {
+            const db = getDatabase();
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION', async (err) => {
+                    if (err) {
+                        return resolve({ error: true, message: err.message });
+                    }
+                    try {
+                        db.get('SELECT * FROM purchases WHERE id = ?', [purchaseId], (purchaseErr, oldPurchase) => {
+                            if (purchaseErr || !oldPurchase) {
+                                db.run('ROLLBACK');
+                                return resolve({ error: true, message: 'Old purchase details not found.' });
+                            }
+                            db.all('SELECT * FROM purchase_items WHERE purchase_id = ?', [purchaseId], (itemsErr, oldItems) => {
+                                if (itemsErr) {
+                                    db.run('ROLLBACK');
+                                    return resolve({ error: true, message: 'Old purchase items fetch failed.' });
+                                }
+                                // Revert previous stock increase
+                                let revertPromise = Promise.resolve();
+                                oldItems.forEach((oldItem) => {
+                                    revertPromise = revertPromise.then(() => {
+                                        return new Promise((revResolve, revReject) => {
+                                            db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [oldItem.quantity, oldItem.product_id], (stockErr) => {
+                                                if (stockErr)
+                                                    return revReject(stockErr);
+                                                revResolve();
+                                            });
+                                        });
+                                    });
+                                });
+                                revertPromise.then(() => {
+                                    // Revert old payment account deduction (add it back)
+                                    if (oldPurchase.paid_amount > 0 && oldPurchase.payment_account_id) {
+                                        return new Promise((acctResolve, acctReject) => {
+                                            db.run('UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?', [oldPurchase.paid_amount, oldPurchase.payment_account_id], (acctErr) => {
+                                                if (acctErr)
+                                                    return acctReject(acctErr);
+                                                acctResolve();
+                                            });
+                                        });
+                                    }
+                                    return Promise.resolve();
+                                }).then(() => {
+                                    return new Promise((delResolve, delReject) => {
+                                        db.run('DELETE FROM purchase_items WHERE purchase_id = ?', [purchaseId], (delErr) => {
+                                            if (delErr)
+                                                return delReject(delErr);
+                                            delResolve();
+                                        });
+                                    });
+                                }).then(() => {
+                                    const updatePurchaseSql = `
+                    UPDATE purchases SET 
+                      purchase_number = ?, vendor_name = ?, date = ?, subtotal = ?, 
+                      discount = ?, grand_total = ?, paid_amount = ?, remaining_amount = ?, 
+                      payment_method = ?, payment_account_id = ?, remarks = ?, 
+                      updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                  `;
+                                    return new Promise((purchaseResolve, purchaseReject) => {
+                                        db.run(updatePurchaseSql, [
+                                            purchase.purchaseNumber,
+                                            purchase.vendorName,
+                                            purchase.date,
+                                            purchase.subtotal,
+                                            purchase.discount,
+                                            purchase.grandTotal,
+                                            purchase.paidAmount,
+                                            purchase.remainingAmount,
+                                            purchase.paymentMethod,
+                                            purchase.paymentAccountId || null,
+                                            purchase.remarks || '',
+                                            purchaseId
+                                        ], (upErr) => {
+                                            if (upErr)
+                                                return purchaseReject(upErr);
+                                            purchaseResolve();
+                                        });
+                                    });
+                                }).then(() => {
+                                    const insertItemSql = `
+                    INSERT INTO purchase_items (
+                      purchase_id, product_id, quantity, purchase_price, discount, total
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                  `;
+                                    let insertPromise = Promise.resolve();
+                                    items.forEach((item) => {
+                                        insertPromise = insertPromise.then(() => {
+                                            return new Promise((itResolve, itReject) => {
+                                                db.run(insertItemSql, [
+                                                    purchaseId,
+                                                    item.productId,
+                                                    item.quantity,
+                                                    item.purchasePrice,
+                                                    item.discount || 0,
+                                                    item.total
+                                                ], (itErr) => {
+                                                    if (itErr)
+                                                        return itReject(itErr);
+                                                    // Add new stock
+                                                    db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.productId], (stockErr) => {
+                                                        if (stockErr)
+                                                            return itReject(stockErr);
+                                                        itResolve();
+                                                    });
+                                                });
+                                            });
+                                        });
+                                    });
+                                    return insertPromise;
+                                }).then(() => {
+                                    // Deduct new payment amount
+                                    if (purchase.paidAmount > 0 && purchase.paymentAccountId) {
+                                        return new Promise((acctResolve, acctReject) => {
+                                            db.run('UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id = ?', [purchase.paidAmount, purchase.paymentAccountId], (acctErr) => {
+                                                if (acctErr)
+                                                    return acctReject(acctErr);
+                                                acctResolve();
+                                            });
+                                        });
+                                    }
+                                    return Promise.resolve();
+                                }).then(() => {
+                                    db.run('COMMIT', (commitErr) => {
+                                        if (commitErr) {
+                                            db.run('ROLLBACK');
+                                            return resolve({ error: true, message: 'Commit failed: ' + commitErr.message });
+                                        }
+                                        resolve({ success: true });
+                                    });
+                                }).catch((flowErr) => {
+                                    db.run('ROLLBACK');
+                                    resolve({ error: true, message: flowErr.message || 'Transaction update failed.' });
+                                });
+                            });
+                        });
+                    }
+                    catch (ex) {
+                        db.run('ROLLBACK');
+                        resolve({ error: true, message: ex.message });
+                    }
+                });
+            });
+        });
+    });
+    // Transaction IPC Handler for cancelling a purchase (soft delete)
+    ipcMain.handle('purchases-cancel', async (_event, purchaseId) => {
+        return new Promise((resolve) => {
+            const db = getDatabase();
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION', async (err) => {
+                    if (err) {
+                        return resolve({ error: true, message: err.message });
+                    }
+                    try {
+                        db.get('SELECT * FROM purchases WHERE id = ?', [purchaseId], (purchaseErr, oldPurchase) => {
+                            if (purchaseErr || !oldPurchase) {
+                                db.run('ROLLBACK');
+                                return resolve({ error: true, message: 'Purchase not found.' });
+                            }
+                            if (oldPurchase.status === 'Cancelled') {
+                                db.run('ROLLBACK');
+                                return resolve({ error: true, message: 'Purchase is already cancelled.' });
+                            }
+                            db.all('SELECT * FROM purchase_items WHERE purchase_id = ?', [purchaseId], (itemsErr, oldItems) => {
+                                if (itemsErr) {
+                                    db.run('ROLLBACK');
+                                    return resolve({ error: true, message: 'Purchase items fetch failed.' });
+                                }
+                                // Revert stock increase (decrease stock)
+                                let revertPromise = Promise.resolve();
+                                oldItems.forEach((oldItem) => {
+                                    revertPromise = revertPromise.then(() => {
+                                        return new Promise((revResolve, revReject) => {
+                                            db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [oldItem.quantity, oldItem.product_id], (stockErr) => {
+                                                if (stockErr)
+                                                    return revReject(stockErr);
+                                                revResolve();
+                                            });
+                                        });
+                                    });
+                                });
+                                revertPromise.then(() => {
+                                    // Restore account balance (add it back)
+                                    if (oldPurchase.paid_amount > 0 && oldPurchase.payment_account_id) {
+                                        return new Promise((acctResolve, acctReject) => {
+                                            db.run('UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?', [oldPurchase.paid_amount, oldPurchase.payment_account_id], (acctErr) => {
+                                                if (acctErr)
+                                                    return acctReject(acctErr);
+                                                acctResolve();
+                                            });
+                                        });
+                                    }
+                                    return Promise.resolve();
+                                }).then(() => {
+                                    return new Promise((statusResolve, statusReject) => {
+                                        db.run("UPDATE purchases SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [purchaseId], (statusErr) => {
+                                            if (statusErr)
+                                                return statusReject(statusErr);
+                                            statusResolve();
+                                        });
+                                    });
+                                }).then(() => {
+                                    db.run('COMMIT', (commitErr) => {
+                                        if (commitErr) {
+                                            db.run('ROLLBACK');
+                                            return resolve({ error: true, message: 'Commit failed: ' + commitErr.message });
+                                        }
+                                        resolve({ success: true });
+                                    });
+                                }).catch((flowErr) => {
+                                    db.run('ROLLBACK');
+                                    resolve({ error: true, message: flowErr.message || 'Transaction cancel failed.' });
+                                });
+                            });
+                        });
+                    }
+                    catch (ex) {
+                        db.run('ROLLBACK');
+                        resolve({ error: true, message: ex.message });
+                    }
+                });
+            });
+        });
+    });
 }

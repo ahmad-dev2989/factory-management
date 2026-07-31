@@ -1,4 +1,4 @@
-import { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3 } from './schema.js';
+import { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4 } from './schema.js';
 function migrateToV1(db) {
     return new Promise((resolve, reject) => {
         console.log('[Database] Migrating database to version 1...');
@@ -183,6 +183,39 @@ function migrateToV3(db) {
         });
     });
 }
+function migrateToV4(db) {
+    return new Promise((resolve, reject) => {
+        console.log('[Database] Migrating database to version 4 (Purchases & Purchase Items)...');
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+            db.exec(SCHEMA_V4, (execErr) => {
+                if (execErr) {
+                    console.error('[Database] Schema execution for v4 failed, rolling back...', execErr);
+                    db.run('ROLLBACK', () => reject(execErr));
+                    return;
+                }
+                console.log('[Database] Purchases & Purchase Items tables created.');
+                db.run('PRAGMA user_version = 4', (versionErr) => {
+                    if (versionErr) {
+                        console.error('[Database] Failed to update user_version to 4, rolling back...', versionErr);
+                        db.run('ROLLBACK', () => reject(versionErr));
+                        return;
+                    }
+                    db.run('COMMIT', (commitErr) => {
+                        if (commitErr) {
+                            console.error('[Database] Failed to commit migration transaction to version 4:', commitErr);
+                            reject(commitErr);
+                        }
+                        else {
+                            console.log('[Database] Database migrated and seeded successfully to version 4.');
+                            resolve();
+                        }
+                    });
+                });
+            });
+        });
+    });
+}
 export function runMigrations(db) {
     return new Promise((resolve, reject) => {
         // Query current user_version
@@ -206,6 +239,10 @@ export function runMigrations(db) {
                 if (currentVersion < 3) {
                     await migrateToV3(db);
                     currentVersion = 3;
+                }
+                if (currentVersion < 4) {
+                    await migrateToV4(db);
+                    currentVersion = 4;
                 }
                 console.log(`[Database] Database schema version is now: ${currentVersion}`);
                 resolve();

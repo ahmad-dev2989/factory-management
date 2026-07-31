@@ -196,3 +196,35 @@ CREATE TABLE IF NOT EXISTS sale_items (
   FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT
 );
 `;
+export const SCHEMA_V4 = `
+CREATE TABLE IF NOT EXISTS purchases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchase_number TEXT UNIQUE NOT NULL,
+  vendor_name TEXT NOT NULL,
+  date TEXT NOT NULL,
+  subtotal REAL DEFAULT 0,
+  discount REAL DEFAULT 0,
+  grand_total REAL DEFAULT 0,
+  paid_amount REAL DEFAULT 0,
+  remaining_amount REAL DEFAULT 0,
+  payment_method TEXT NOT NULL,
+  payment_account_id INTEGER,
+  remarks TEXT,
+  status TEXT DEFAULT 'Active',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(payment_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS purchase_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchase_id INTEGER NOT NULL,
+  product_id INTEGER NOT NULL,
+  quantity REAL NOT NULL,
+  purchase_price REAL NOT NULL,
+  discount REAL DEFAULT 0,
+  total REAL NOT NULL,
+  FOREIGN KEY(purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+  FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT
+);
+`;

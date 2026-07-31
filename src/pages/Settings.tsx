@@ -87,6 +87,16 @@ const SalesIcon = () => (
   </svg>
 );
 
+const PurchasesIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="8" width="20" height="20" rx="3" fill="#2F80ED" />
+    <path d="M16 4V12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M12 8L16 12L20 8" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="20" r="2.5" fill="white" />
+    <circle cx="20" cy="20" r="2.5" fill="white" />
+  </svg>
+);
+
 const UnitsIcon = () => (
   <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="15" y="6" width="2" height="20" fill="#4F4F4F" />
@@ -181,6 +191,11 @@ export default function Settings() {
       title: 'Sales',
       description: 'Manage sales invoices and payments',
       icon: SalesIcon,
+    },
+    {
+      title: 'Purchases',
+      description: 'Manage purchase invoices and stock receipts',
+      icon: PurchasesIcon,
     },
     {
       title: 'Customers',
@@ -313,6 +328,8 @@ export default function Settings() {
                       navigate('/customers');
                     } else if (card.title === 'Sales') {
                       navigate('/sales');
+                    } else if (card.title === 'Purchases') {
+                      navigate('/purchases');
                     } else if (card.title === 'Products') {
                       navigate('/products');
                     } else if (card.title === 'Employees') {
