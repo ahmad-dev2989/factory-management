@@ -228,3 +228,36 @@ CREATE TABLE IF NOT EXISTS purchase_items (
   FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE RESTRICT
 );
 `;
+export const SCHEMA_V5 = `
+CREATE TABLE IF NOT EXISTS cash_in (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  voucher_number TEXT UNIQUE NOT NULL,
+  date TEXT NOT NULL,
+  received_from TEXT NOT NULL,
+  category TEXT NOT NULL,
+  account_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  reference TEXT,
+  remarks TEXT,
+  status TEXT DEFAULT 'Active',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(account_id) REFERENCES bank_accounts(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS cash_out (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  voucher_number TEXT UNIQUE NOT NULL,
+  date TEXT NOT NULL,
+  paid_to TEXT NOT NULL,
+  category TEXT NOT NULL,
+  account_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  reference TEXT,
+  remarks TEXT,
+  status TEXT DEFAULT 'Active',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(account_id) REFERENCES bank_accounts(id) ON DELETE RESTRICT
+);
+`;

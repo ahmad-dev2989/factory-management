@@ -97,6 +97,28 @@ const PurchasesIcon = () => (
   </svg>
 );
 
+const CashInIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="6" width="24" height="20" rx="3" fill="#27AE60" />
+    <circle cx="16" cy="16" r="5" fill="white" fillOpacity="0.25" />
+    <path d="M16 11V21" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M12 17L16 21L20 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="22" y="10" width="2" height="12" fill="white" fillOpacity="0.4" />
+    <rect x="8" y="10" width="2" height="12" fill="white" fillOpacity="0.4" />
+  </svg>
+);
+
+const CashOutIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="6" width="24" height="20" rx="3" fill="#EB5757" />
+    <circle cx="16" cy="16" r="5" fill="white" fillOpacity="0.25" />
+    <path d="M16 21V11" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M12 15L16 11L20 15" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="22" y="10" width="2" height="12" fill="white" fillOpacity="0.4" />
+    <rect x="8" y="10" width="2" height="12" fill="white" fillOpacity="0.4" />
+  </svg>
+);
+
 const UnitsIcon = () => (
   <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="15" y="6" width="2" height="20" fill="#4F4F4F" />
@@ -196,6 +218,16 @@ export default function Settings() {
       title: 'Purchases',
       description: 'Manage purchase invoices and stock receipts',
       icon: PurchasesIcon,
+    },
+    {
+      title: 'Cash In',
+      description: 'Record incoming cash/bank receipts',
+      icon: CashInIcon,
+    },
+    {
+      title: 'Cash Out',
+      description: 'Record cash/bank payments and expenses',
+      icon: CashOutIcon,
     },
     {
       title: 'Customers',
@@ -330,6 +362,10 @@ export default function Settings() {
                       navigate('/sales');
                     } else if (card.title === 'Purchases') {
                       navigate('/purchases');
+                    } else if (card.title === 'Cash In') {
+                      navigate('/cash-in');
+                    } else if (card.title === 'Cash Out') {
+                      navigate('/cash-out');
                     } else if (card.title === 'Products') {
                       navigate('/products');
                     } else if (card.title === 'Employees') {

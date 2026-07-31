@@ -1,5 +1,5 @@
 import sqlite3 from 'sqlite3';
-import { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4 } from './schema.js';
+import { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5 } from './schema.js';
 
 function migrateToV1(db: sqlite3.Database): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -243,6 +243,43 @@ function migrateToV4(db: sqlite3.Database): Promise<void> {
   });
 }
 
+function migrateToV5(db: sqlite3.Database): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('[Database] Migrating database to version 5 (Cash In & Cash Out)...');
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      db.exec(SCHEMA_V5, (execErr) => {
+        if (execErr) {
+          console.error('[Database] Schema execution for v5 failed, rolling back...', execErr);
+          db.run('ROLLBACK', () => reject(execErr));
+          return;
+        }
+
+        console.log('[Database] Cash In & Cash Out tables created.');
+
+        db.run('PRAGMA user_version = 5', (versionErr) => {
+          if (versionErr) {
+            console.error('[Database] Failed to update user_version to 5, rolling back...', versionErr);
+            db.run('ROLLBACK', () => reject(versionErr));
+            return;
+          }
+
+          db.run('COMMIT', (commitErr) => {
+            if (commitErr) {
+              console.error('[Database] Failed to commit migration transaction to version 5:', commitErr);
+              reject(commitErr);
+            } else {
+              console.log('[Database] Database migrated and seeded successfully to version 5.');
+              resolve();
+            }
+          });
+        });
+      });
+    });
+  });
+}
+
 export function runMigrations(db: sqlite3.Database): Promise<void> {
   return new Promise((resolve, reject) => {
     // Query current user_version
@@ -272,6 +309,10 @@ export function runMigrations(db: sqlite3.Database): Promise<void> {
         if (currentVersion < 4) {
           await migrateToV4(db);
           currentVersion = 4;
+        }
+        if (currentVersion < 5) {
+          await migrateToV5(db);
+          currentVersion = 5;
         }
         console.log(`[Database] Database schema version is now: ${currentVersion}`);
         resolve();

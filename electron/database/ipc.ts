@@ -783,4 +783,437 @@ export function registerDatabaseIPCHandlers(): void {
       });
     });
   });
+
+  // Transaction IPC Handler for saving a new cash_in record
+  ipcMain.handle('cash-in-create', async (_event, item: any) => {
+    return new Promise((resolve) => {
+      const db = getDatabase();
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', async (err) => {
+          if (err) return resolve({ error: true, message: err.message });
+
+          try {
+            const sql = `
+              INSERT INTO cash_in (
+                voucher_number, date, received_from, category, 
+                account_id, amount, reference, remarks, status
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active')
+            `;
+            db.run(sql, [
+              item.voucherNumber,
+              item.date,
+              item.receivedFrom,
+              item.category,
+              item.accountId,
+              item.amount,
+              item.reference || '',
+              item.remarks || ''
+            ], function(this: any, runErr: any) {
+              if (runErr) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Cash In insert failed: ' + runErr.message });
+              }
+
+              const voucherId = this.lastID;
+
+              // Increase account balance
+              db.run(
+                'UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?',
+                [item.amount, item.accountId],
+                (acctErr) => {
+                  if (acctErr) {
+                    db.run('ROLLBACK');
+                    return resolve({ error: true, message: 'Account update failed: ' + acctErr.message });
+                  }
+
+                  db.run('COMMIT', (commitErr) => {
+                    if (commitErr) {
+                      db.run('ROLLBACK');
+                      return resolve({ error: true, message: 'Commit failed: ' + commitErr.message });
+                    }
+                    resolve({ success: true, voucherId });
+                  });
+                }
+              );
+            });
+          } catch (ex: any) {
+            db.run('ROLLBACK');
+            resolve({ error: true, message: ex.message });
+          }
+        });
+      });
+    });
+  });
+
+  // Transaction IPC Handler for updating an existing cash_in record
+  ipcMain.handle('cash-in-update', async (_event, id: number, item: any) => {
+    return new Promise((resolve) => {
+      const db = getDatabase();
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', async (err) => {
+          if (err) return resolve({ error: true, message: err.message });
+
+          try {
+            db.get('SELECT * FROM cash_in WHERE id = ?', [id], (fetchErr, old: any) => {
+              if (fetchErr || !old) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Old cash in voucher not found.' });
+              }
+
+              // Revert old account increase
+              db.run(
+                'UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id = ?',
+                [old.amount, old.account_id],
+                (revertErr) => {
+                  if (revertErr) {
+                    db.run('ROLLBACK');
+                    return resolve({ error: true, message: 'Account balance revert failed: ' + revertErr.message });
+                  }
+
+                  // Apply new increase
+                  db.run(
+                    'UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?',
+                    [item.amount, item.accountId],
+                    (applyErr) => {
+                      if (applyErr) {
+                        db.run('ROLLBACK');
+                        return resolve({ error: true, message: 'Account balance apply failed: ' + applyErr.message });
+                      }
+
+                      // Update cash_in record
+                      const sql = `
+                        UPDATE cash_in SET 
+                          voucher_number = ?, date = ?, received_from = ?, category = ?, 
+                          account_id = ?, amount = ?, reference = ?, remarks = ?, 
+                          updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                      `;
+                      db.run(sql, [
+                        item.voucherNumber,
+                        item.date,
+                        item.receivedFrom,
+                        item.category,
+                        item.accountId,
+                        item.amount,
+                        item.reference || '',
+                        item.remarks || '',
+                        id
+                      ], (upErr) => {
+                        if (upErr) {
+                          db.run('ROLLBACK');
+                          return resolve({ error: true, message: 'Voucher update failed: ' + upErr.message });
+                        }
+
+                        db.run('COMMIT', (commitErr) => {
+                          if (commitErr) {
+                            db.run('ROLLBACK');
+                            return resolve({ error: true, message: 'Commit failed: ' + commitErr.message });
+                          }
+                          resolve({ success: true });
+                        });
+                      });
+                    }
+                  );
+                }
+              );
+            });
+          } catch (ex: any) {
+            db.run('ROLLBACK');
+            resolve({ error: true, message: ex.message });
+          }
+        });
+      });
+    });
+  });
+
+  // Transaction IPC Handler for cancelling a cash_in record
+  ipcMain.handle('cash-in-cancel', async (_event, id: number) => {
+    return new Promise((resolve) => {
+      const db = getDatabase();
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', async (err) => {
+          if (err) return resolve({ error: true, message: err.message });
+
+          try {
+            db.get('SELECT * FROM cash_in WHERE id = ?', [id], (fetchErr, old: any) => {
+              if (fetchErr || !old) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Cash in voucher not found.' });
+              }
+
+              if (old.status === 'Cancelled') {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Voucher already cancelled.' });
+              }
+
+              // Revert balance (deduct)
+              db.run(
+                'UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id = ?',
+                [old.amount, old.account_id],
+                (revertErr) => {
+                  if (revertErr) {
+                    db.run('ROLLBACK');
+                    return resolve({ error: true, message: 'Balance revert failed.' });
+                  }
+
+                  db.run(
+                    "UPDATE cash_in SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    [id],
+                    (statusErr) => {
+                      if (statusErr) {
+                        db.run('ROLLBACK');
+                        return resolve({ error: true, message: 'Status update failed.' });
+                      }
+
+                      db.run('COMMIT', (commitErr) => {
+                        if (commitErr) {
+                          db.run('ROLLBACK');
+                          return resolve({ error: true, message: 'Commit failed.' });
+                        }
+                        resolve({ success: true });
+                      });
+                    }
+                  );
+                }
+              );
+            });
+          } catch (ex: any) {
+            db.run('ROLLBACK');
+            resolve({ error: true, message: ex.message });
+          }
+        });
+      });
+    });
+  });
+
+  // Transaction IPC Handler for saving a new cash_out record
+  ipcMain.handle('cash-out-create', async (_event, item: any) => {
+    return new Promise((resolve) => {
+      const db = getDatabase();
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', async (err) => {
+          if (err) return resolve({ error: true, message: err.message });
+
+          try {
+            // Get current account balance inside transaction
+            db.get('SELECT current_balance FROM bank_accounts WHERE id = ?', [item.accountId], (balErr, acc: any) => {
+              if (balErr || !acc) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Selected bank account not found.' });
+              }
+
+              const balance = Number(acc.current_balance) || 0;
+              if (balance < item.amount) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Insufficient balance in selected account.' });
+              }
+
+              // Insert voucher
+              const sql = `
+                INSERT INTO cash_out (
+                  voucher_number, date, paid_to, category, 
+                  account_id, amount, reference, remarks, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active')
+              `;
+              db.run(sql, [
+                item.voucherNumber,
+                item.date,
+                item.paidTo,
+                item.category,
+                item.accountId,
+                item.amount,
+                item.reference || '',
+                item.remarks || ''
+              ], function(this: any, runErr: any) {
+                if (runErr) {
+                  db.run('ROLLBACK');
+                  return resolve({ error: true, message: 'Cash Out insert failed: ' + runErr.message });
+                }
+
+                const voucherId = this.lastID;
+
+                // Decrease balance
+                db.run(
+                  'UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id = ?',
+                  [item.amount, item.accountId],
+                  (acctErr) => {
+                    if (acctErr) {
+                      db.run('ROLLBACK');
+                      return resolve({ error: true, message: 'Account deduction failed: ' + acctErr.message });
+                    }
+
+                    db.run('COMMIT', (commitErr) => {
+                      if (commitErr) {
+                        db.run('ROLLBACK');
+                        return resolve({ error: true, message: 'Commit failed.' });
+                      }
+                      resolve({ success: true, voucherId });
+                    });
+                  }
+                );
+              });
+            });
+          } catch (ex: any) {
+            db.run('ROLLBACK');
+            resolve({ error: true, message: ex.message });
+          }
+        });
+      });
+    });
+  });
+
+  // Transaction IPC Handler for updating an existing cash_out record
+  ipcMain.handle('cash-out-update', async (_event, id: number, item: any) => {
+    return new Promise((resolve) => {
+      const db = getDatabase();
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', async (err) => {
+          if (err) return resolve({ error: true, message: err.message });
+
+          try {
+            db.get('SELECT * FROM cash_out WHERE id = ?', [id], (fetchErr, old: any) => {
+              if (fetchErr || !old) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Old cash out voucher not found.' });
+              }
+
+              // Temporarily restore old deduction
+              db.run(
+                'UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?',
+                [old.amount, old.account_id],
+                (revertErr) => {
+                  if (revertErr) {
+                    db.run('ROLLBACK');
+                    return resolve({ error: true, message: 'Balance restoration failed.' });
+                  }
+
+                  // Verify new balance is sufficient
+                  db.get('SELECT current_balance FROM bank_accounts WHERE id = ?', [item.accountId], (balErr, acc: any) => {
+                    if (balErr || !acc) {
+                      db.run('ROLLBACK');
+                      return resolve({ error: true, message: 'Selected bank account not found.' });
+                    }
+
+                    const balance = Number(acc.current_balance) || 0;
+                    if (balance < item.amount) {
+                      db.run('ROLLBACK');
+                      return resolve({ error: true, message: 'Insufficient balance in selected account.' });
+                    }
+
+                    // Apply deduction
+                    db.run(
+                      'UPDATE bank_accounts SET current_balance = current_balance - ? WHERE id = ?',
+                      [item.amount, item.accountId],
+                      (applyErr) => {
+                        if (applyErr) {
+                          db.run('ROLLBACK');
+                          return resolve({ error: true, message: 'Account balance deduction failed.' });
+                        }
+
+                        // Update voucher
+                        const sql = `
+                          UPDATE cash_out SET 
+                            voucher_number = ?, date = ?, paid_to = ?, category = ?, 
+                            account_id = ?, amount = ?, reference = ?, remarks = ?, 
+                            updated_at = CURRENT_TIMESTAMP
+                          WHERE id = ?
+                        `;
+                        db.run(sql, [
+                          item.voucherNumber,
+                          item.date,
+                          item.paidTo,
+                          item.category,
+                          item.accountId,
+                          item.amount,
+                          item.reference || '',
+                          item.remarks || '',
+                          id
+                        ], (upErr) => {
+                          if (upErr) {
+                            db.run('ROLLBACK');
+                            return resolve({ error: true, message: 'Voucher update failed.' });
+                          }
+
+                          db.run('COMMIT', (commitErr) => {
+                            if (commitErr) {
+                              db.run('ROLLBACK');
+                              return resolve({ error: true, message: 'Commit failed.' });
+                            }
+                            resolve({ success: true });
+                          });
+                        });
+                      }
+                    );
+                  });
+                }
+              );
+            });
+          } catch (ex: any) {
+            db.run('ROLLBACK');
+            resolve({ error: true, message: ex.message });
+          }
+        });
+      });
+    });
+  });
+
+  // Transaction IPC Handler for cancelling a cash_out record
+  ipcMain.handle('cash-out-cancel', async (_event, id: number) => {
+    return new Promise((resolve) => {
+      const db = getDatabase();
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', async (err) => {
+          if (err) return resolve({ error: true, message: err.message });
+
+          try {
+            db.get('SELECT * FROM cash_out WHERE id = ?', [id], (fetchErr, old: any) => {
+              if (fetchErr || !old) {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Voucher not found.' });
+              }
+
+              if (old.status === 'Cancelled') {
+                db.run('ROLLBACK');
+                return resolve({ error: true, message: 'Voucher already cancelled.' });
+              }
+
+              // Revert balance (add back)
+              db.run(
+                'UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?',
+                [old.amount, old.account_id],
+                (revertErr) => {
+                  if (revertErr) {
+                    db.run('ROLLBACK');
+                    return resolve({ error: true, message: 'Balance restoration failed.' });
+                  }
+
+                  db.run(
+                    "UPDATE cash_out SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    [id],
+                    (statusErr) => {
+                      if (statusErr) {
+                        db.run('ROLLBACK');
+                        return resolve({ error: true, message: 'Status update failed.' });
+                      }
+
+                      db.run('COMMIT', (commitErr) => {
+                        if (commitErr) {
+                          db.run('ROLLBACK');
+                          return resolve({ error: true, message: 'Commit failed.' });
+                        }
+                        resolve({ success: true });
+                      });
+                    }
+                  );
+                }
+              );
+            });
+          } catch (ex: any) {
+            db.run('ROLLBACK');
+            resolve({ error: true, message: ex.message });
+          }
+        });
+      });
+    });
+  });
 }
