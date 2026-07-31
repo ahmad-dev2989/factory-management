@@ -75,6 +75,18 @@ const ProductsIcon = () => (
   </svg>
 );
 
+const SalesIcon = () => (
+  <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="4" width="20" height="24" rx="3" fill="#27AE60" />
+    <path d="M10 10H22" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    <path d="M10 15H22" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    <path d="M10 20H16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="22" cy="22" r="4" fill="#F2C94C" />
+    <path d="M22 20.5V23.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M20.5 22H23.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
 const UnitsIcon = () => (
   <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="15" y="6" width="2" height="20" fill="#4F4F4F" />
@@ -164,6 +176,11 @@ export default function Settings() {
       title: 'Bank Accounts',
       description: 'Manage Cash, Meezan Bank, HBL, UBL, EasyPaisa, JazzCash',
       icon: BankAccountsIcon,
+    },
+    {
+      title: 'Sales',
+      description: 'Manage sales invoices and payments',
+      icon: SalesIcon,
     },
     {
       title: 'Customers',
@@ -294,6 +311,8 @@ export default function Settings() {
                       navigate('/bank-accounts');
                     } else if (card.title === 'Customers') {
                       navigate('/customers');
+                    } else if (card.title === 'Sales') {
+                      navigate('/sales');
                     } else if (card.title === 'Products') {
                       navigate('/products');
                     } else if (card.title === 'Employees') {
