@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, ArrowLeft } from 'lucide-react';
 
 export default function CompanyProfile() {
   const navigate = useNavigate();
@@ -198,13 +198,20 @@ export default function CompanyProfile() {
       <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
         {/* Left Side */}
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate('/settings')} 
+            className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+            title="Back to Settings"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           {/* LB Logo Placeholder */}
           <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
             LB
           </div>
           
           <span className="font-semibold text-lg tracking-wide">
-            Factory Management & Accounting System
+            Factory App
           </span>
         </div>
 

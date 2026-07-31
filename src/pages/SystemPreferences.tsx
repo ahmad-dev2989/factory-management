@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Save, RotateCcw, FolderOpen, DatabaseBackup, DownloadCloud, Info } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Save, RotateCcw, FolderOpen, DatabaseBackup, DownloadCloud, Info, ArrowLeft } from 'lucide-react';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
     <div
@@ -129,11 +129,18 @@ export default function SystemPreferences() {
             {/* Top Blue Header */}
             <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm relative z-20">
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+                        title="Back to Settings"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
                         LB
                     </div>
                     <span className="font-semibold text-lg tracking-wide">
-                        Factory Management & Accounting System
+                        Factory App
                     </span>
                 </div>
                 <div className="flex items-center gap-5">
@@ -356,7 +363,7 @@ export default function SystemPreferences() {
                                     About
                                 </h3>
                                 <div className="space-y-2 text-sm text-[#4B5563]">
-                                    <div className="flex justify-between border-b border-[#E5E7EB] pb-1.5"><span className="font-semibold text-[#1F2937]">Application Name:</span> <span>Factory Management System</span></div>
+                                    <div className="flex justify-between border-b border-[#E5E7EB] pb-1.5"><span className="font-semibold text-[#1F2937]">Application Name:</span> <span>Factory App</span></div>
                                     <div className="flex justify-between border-b border-[#E5E7EB] pb-1.5"><span className="font-semibold text-[#1F2937]">Version:</span> <span>1.0.0</span></div>
                                     <div className="flex justify-between border-b border-[#E5E7EB] pb-1.5"><span className="font-semibold text-[#1F2937]">Developer:</span> <span>Ahmad Farooq</span></div>
                                     <div className="flex justify-between"><span className="font-semibold text-[#1F2937]">Build Date:</span> <span>July 2026</span></div>

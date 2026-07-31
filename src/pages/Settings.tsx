@@ -224,7 +224,7 @@ export default function Settings() {
           </div>
 
           <span className="font-semibold text-lg tracking-wide">
-            Factory Management & Accounting System
+            Factory App
           </span>
         </div>
 

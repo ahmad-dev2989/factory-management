@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Lock, Eye, EyeOff } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 interface ChangePasswordProps {
   adminPassword?: string;
   setAdminPassword?: (password: string) => void;
 }
 
-export default function ChangePassword({ 
-  adminPassword = 'admin', 
-  setAdminPassword = () => {} 
+export default function ChangePassword({
+  adminPassword = 'admin',
+  setAdminPassword = () => { }
 }: ChangePasswordProps) {
   const navigate = useNavigate();
 
@@ -27,7 +27,7 @@ export default function ChangePassword({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   const [dbAdminPassword, setDbAdminPassword] = useState(adminPassword);
 
   useEffect(() => {
@@ -118,13 +118,20 @@ export default function ChangePassword({
       <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
         {/* Left Side */}
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/settings')}
+            className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+            title="Back to Settings"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           {/* LB Logo Placeholder */}
           <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
             LB
           </div>
-          
+
           <span className="font-semibold text-lg tracking-wide">
-            Factory Management & Accounting System
+            Factory App
           </span>
         </div>
 
@@ -150,8 +157,8 @@ export default function ChangePassword({
               </div>
               <span className="text-sm font-semibold">Admin</span>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleLogout}
               className="hover:bg-white/10 p-1.5 rounded transition-colors cursor-pointer focus:outline-none flex items-center justify-center text-white/90 hover:text-white"
               title="Logout"
@@ -167,9 +174,9 @@ export default function ChangePassword({
         <div className="max-w-[1400px] w-full mx-auto flex flex-col gap-1.5">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs font-semibold text-[#6B7280] tracking-wide uppercase">
-            <button 
+            <button
               type="button"
-              onClick={() => navigate('/settings')} 
+              onClick={() => navigate('/settings')}
               className="hover:text-[#2F80ED] transition-colors cursor-pointer focus:outline-none"
             >
               Settings
@@ -177,7 +184,7 @@ export default function ChangePassword({
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-[#1F2937]">Change Password</span>
           </div>
-          
+
           <h2 className="text-xl font-bold text-[#1F2937] mt-1">
             Change Password
           </h2>
@@ -191,7 +198,7 @@ export default function ChangePassword({
       <main className="flex-grow p-8 flex items-center justify-center overflow-y-auto">
         <div className="w-full max-w-[500px]">
           <form onSubmit={handleSave} className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-8 space-y-6">
-            
+
             {/* Current Password */}
             <div>
               <label className="block text-xs font-semibold text-[#1F2937] uppercase tracking-wider mb-2">

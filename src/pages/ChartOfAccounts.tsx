@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, X, AlertTriangle, ChevronDown, ArrowLeft } from 'lucide-react';
 
 interface AccountItem {
     id: number;
@@ -305,11 +305,18 @@ export default function ChartOfAccounts() {
             {/* Top Blue Header */}
             <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+                        title="Back to Settings"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
                         LB
                     </div>
                     <span className="font-semibold text-lg tracking-wide">
-                        Factory Management & Accounting System
+                        Factory App
                     </span>
                 </div>
                 <div className="flex items-center gap-5">

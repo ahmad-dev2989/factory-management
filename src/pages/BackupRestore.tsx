@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, DatabaseBackup, UploadCloud, RefreshCw, AlertTriangle, CheckCircle2, AlertOctagon } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, DatabaseBackup, UploadCloud, RefreshCw, AlertTriangle, CheckCircle2, AlertOctagon, ArrowLeft } from 'lucide-react';
 
 interface BackupMetadata {
   backupDate: string;
@@ -26,7 +26,7 @@ export default function BackupRestore() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreProgress, setRestoreProgress] = useState(0);
   const [restoreMetadata, setRestoreMetadata] = useState<BackupMetadata | null>(null);
-  
+
   const [errorMessage, setErrorMessage] = useState('');
   const [showRestartModal, setShowRestartModal] = useState(false);
 
@@ -115,7 +115,7 @@ export default function BackupRestore() {
   const handleCancelRestore = async () => {
     try {
       await (window as any).electron.invoke('backup-restore-abort');
-    } catch {}
+    } catch { }
     setIsRestoring(false);
     setRestoreMetadata(null);
   };
@@ -133,11 +133,18 @@ export default function BackupRestore() {
       {/* Top Blue Header */}
       <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/settings')}
+            className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+            title="Back to Settings"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
             LB
           </div>
           <span className="font-semibold text-lg tracking-wide">
-            Factory Management & Accounting System
+            Factory App
           </span>
         </div>
 
@@ -181,7 +188,7 @@ export default function BackupRestore() {
       {/* Main Container */}
       <main className="flex-grow p-8 overflow-y-auto">
         <div className="max-w-[1000px] w-full mx-auto flex flex-col gap-6">
-          
+
           {/* Success / Error Messages */}
           {backupSuccess && (
             <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-[6px] flex items-center gap-3 shadow-sm transition-all animate-fadeIn">
@@ -204,7 +211,7 @@ export default function BackupRestore() {
           )}
 
           <div className="grid grid-cols-2 gap-8">
-            
+
             {/* Backup Box */}
             <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-8 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex flex-col justify-between min-h-[300px]">
               <div>

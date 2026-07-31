@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, Eye, EyeOff, X, AlertTriangle } from 'lucide-react';
+import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, Eye, EyeOff, X, AlertTriangle, ArrowLeft } from 'lucide-react';
 
 interface UserItem {
   id: number;
@@ -260,11 +260,18 @@ export default function UserManagement() {
       <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
         {/* Left Side */}
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/settings')}
+            className="flex items-center justify-center p-1.5 hover:bg-white/10 rounded transition-colors cursor-pointer focus:outline-none"
+            title="Back to Settings"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
             LB
           </div>
           <span className="font-semibold text-lg tracking-wide">
-            Factory Management & Accounting System
+            Factory App
           </span>
         </div>
 
@@ -290,8 +297,8 @@ export default function UserManagement() {
               </div>
               <span className="text-sm font-semibold">Admin</span>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleLogout}
               className="hover:bg-white/10 p-1.5 rounded transition-colors cursor-pointer focus:outline-none flex items-center justify-center text-white/90 hover:text-white"
               title="Logout"
@@ -306,9 +313,9 @@ export default function UserManagement() {
       <div className="bg-white border-b border-[#E5E7EB] py-5 px-8 flex flex-col justify-center">
         <div className="max-w-[1400px] w-full mx-auto flex flex-col gap-1.5">
           <div className="flex items-center gap-2 text-xs font-semibold text-[#6B7280] tracking-wide uppercase">
-            <button 
+            <button
               type="button"
-              onClick={() => navigate('/settings')} 
+              onClick={() => navigate('/settings')}
               className="hover:text-[#2F80ED] transition-colors cursor-pointer focus:outline-none"
             >
               Settings
@@ -316,7 +323,7 @@ export default function UserManagement() {
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-[#1F2937]">User Management</span>
           </div>
-          
+
           <h2 className="text-xl font-bold text-[#1F2937] mt-1">
             User Management
           </h2>
@@ -329,7 +336,7 @@ export default function UserManagement() {
       {/* Main Table Content */}
       <main className="flex-grow p-8 overflow-y-auto">
         <div className="max-w-[1400px] w-full mx-auto space-y-4">
-          
+
           {/* Notification Message Banner */}
           {successMessage && (
             <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-sm font-semibold rounded-[8px] flex items-center gap-2 select-none">
@@ -340,7 +347,7 @@ export default function UserManagement() {
 
           {/* Main List Box */}
           <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-6 space-y-6">
-            
+
             {/* Toolbar */}
             <div className="flex items-center justify-between gap-4">
               {/* Search Field */}
@@ -439,14 +446,14 @@ export default function UserManagement() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-lg w-full p-6 flex flex-col max-h-[90vh]">
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3 shrink-0">
               <h3 className="text-base font-bold text-[#1F2937]">
                 {editingUser ? 'Edit User Accounts' : 'Create New User'}
               </h3>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="text-[#6B7280] hover:text-[#1F2937] p-1 rounded hover:bg-[#F6F8FB] cursor-pointer"
               >
@@ -456,10 +463,10 @@ export default function UserManagement() {
 
             {/* Modal Form */}
             <form onSubmit={handleSaveUser} className="flex flex-col flex-grow overflow-hidden mt-4">
-              
+
               {/* Scrollable Fields container */}
               <div className="flex-grow overflow-y-auto pr-1 pb-4 space-y-5">
-                
+
                 {/* Full Name */}
                 <div>
                   <label className="block text-xs font-semibold text-[#1F2937] uppercase tracking-wider mb-1.5">
@@ -506,7 +513,7 @@ export default function UserManagement() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={editingUser ? '••••••••' : 'Enter password'}
                       className={`w-full pl-3 pr-10 py-2 bg-white border ${modalErrors.password ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'} text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
-                  />
+                    />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
@@ -584,7 +591,7 @@ export default function UserManagement() {
                   <h4 className="text-xs font-bold text-[#1F2937] uppercase tracking-wider">
                     Permissions
                   </h4>
-                  
+
                   {/* Grid Checkboxes */}
                   <div className="grid grid-cols-3 gap-3">
                     {[
@@ -604,8 +611,8 @@ export default function UserManagement() {
                       'Chart of Accounts',
                       'Linked Accounts'
                     ].map((perm) => (
-                      <label 
-                        key={perm} 
+                      <label
+                        key={perm}
                         className="flex items-center gap-2 text-xs text-[#6B7280] select-none opacity-60 cursor-not-allowed"
                       >
                         <input
@@ -653,7 +660,7 @@ export default function UserManagement() {
       {isDeleteModalOpen && deleteTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-sm w-full p-6 space-y-5">
-            
+
             {/* Header / Error Alert */}
             <div className="flex items-start gap-3">
               <div className={`p-2 rounded-full ${deleteError ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}`}>
@@ -682,7 +689,7 @@ export default function UserManagement() {
               >
                 Cancel
               </button>
-              
+
               {!deleteError && (
                 <button
                   type="button"

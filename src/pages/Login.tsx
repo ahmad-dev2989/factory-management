@@ -49,7 +49,7 @@ export default function Login(_props: { adminPassword?: string }) {
               <Factory className="w-8 h-8 text-[#2F80ED]" />
             </div>
             <h1 className="text-[22px] font-semibold text-[#1F2937] tracking-tight text-center">
-              Factory Management System
+              Factory App
             </h1>
             <p className="text-sm text-[#6B7280] mt-1 text-center">
               Please sign in to continue.

@@ -1,9 +1,9 @@
 {
-  "name": "factory-project",
+  "name": "factory-app",
   "private": true,
-  "version": "0.0.1",
-  "author": "Factory Management",
-  "description": "Factory Management & Accounting System",
+  "version": "0.0.2",
+  "author": "Factory App",
+  "description": "Factory App",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -42,7 +42,8 @@
   },
   "build": {
     "appId": "com.factory.management",
-    "productName": "Factory Management & Accounting System",
+    "productName": "Factory App",
+    "generateUpdatesFilesForAllChannels": true,
     "npmRebuild": false,
     "asar": true,
     "asarUnpack": "**/node_modules/sqlite3/**/*",
@@ -59,18 +60,23 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/app-icons/icon.ico"
+      "icon": "public/app-icons/icon.ico",
+      "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "nsis": {
+      "packElevateHelper": false,
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "Factory Management & Accounting System",
+      "shortcutName": "Factory App",
       "installerIcon": "public/app-icons/icon.ico",
       "uninstallerIcon": "public/app-icons/icon.ico",
-      "uninstallDisplayName": "Factory Management & Accounting System",
+      "uninstallDisplayName": "Factory App",
       "include": "build/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName} Portable ${version}.${ext}"
     },
     "publish": {
       "provider": "github",

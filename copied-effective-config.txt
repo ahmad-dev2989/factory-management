@@ -1,0 +1,37 @@
+directories:
+  output: dist-installer
+  buildResources: build
+appId: com.factory.management
+productName: Factory Management & Accounting System
+npmRebuild: false
+asar: true
+asarUnpack: '**/node_modules/sqlite3/**/*'
+files:
+  - filter:
+      - dist/**/*
+      - dist-electron/**/*
+      - package.json
+win:
+  target:
+    - nsis
+    - portable
+  icon: public/app-icons/icon.ico
+  artifactName: ${productName} Setup ${version}.${ext}
+nsis:
+  packElevateHelper: false
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Factory Management & Accounting System
+  installerIcon: public/app-icons/icon.ico
+  uninstallerIcon: public/app-icons/icon.ico
+  uninstallDisplayName: Factory Management & Accounting System
+  include: build/installer.nsh
+portable:
+  artifactName: ${productName} Portable ${version}.${ext}
+publish:
+  provider: github
+  owner: ahmad-dev2989
+  repo: factory-management
+electronVersion: 43.2.0

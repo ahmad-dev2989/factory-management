@@ -20,7 +20,7 @@ function createWindow() {
     : path.join(__dirname, '../dist/app-icons/icon.png');
 
   mainWindow = new BrowserWindow({
-    title: 'Factory Management & Accounting System',
+    title: 'Factory App',
     icon: iconPath,
     width: 1280,
     height: 720,
