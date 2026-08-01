@@ -97,7 +97,7 @@ export default function CashOut() {
 
   // Column Visibility Preferences
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['voucherNumber', 'date', 'paidTo', 'category', 'accountName', 'amount', 'status']);
-  
+
   const allColumns = [
     { key: 'voucherNumber', label: 'Voucher No' },
     { key: 'date', label: 'Date' },
@@ -994,11 +994,10 @@ export default function CashOut() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${
-                            currentPage === pageNum
+                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${currentPage === pageNum
                               ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
                               : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
-                          }`}
+                            }`}
                         >
                           {pageNum}
                         </button>
@@ -1042,9 +1041,8 @@ export default function CashOut() {
                   type="text"
                   value={voucherNumber}
                   onChange={(e) => setVoucherNumber(e.target.value)}
-                  className={`w-full px-3 py-1.5 bg-white border ${
-                    formErrors.voucherNumber ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                  } text-[#1F2937] rounded focus:outline-none focus:ring-1`}
+                  className={`w-full px-3 py-1.5 bg-white border ${formErrors.voucherNumber ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                    } text-[#1F2937] rounded focus:outline-none focus:ring-1`}
                   required
                 />
               </div>
@@ -1067,9 +1065,8 @@ export default function CashOut() {
                   value={paidTo}
                   onChange={(e) => setPaidTo(e.target.value)}
                   placeholder="e.g. Supplier Name / Employee / Landlord"
-                  className={`w-full px-3 py-1.5 bg-white border ${
-                    formErrors.paidTo ? 'border-red-500' : 'border-[#E5E7EB]'
-                  } text-[#1F2937] rounded focus:outline-none`}
+                  className={`w-full px-3 py-1.5 bg-white border ${formErrors.paidTo ? 'border-red-500' : 'border-[#E5E7EB]'
+                    } text-[#1F2937] rounded focus:outline-none`}
                   required
                 />
               </div>
@@ -1126,9 +1123,8 @@ export default function CashOut() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className={`w-full px-3 py-1.5 bg-white border ${
-                    formErrors.amount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                  } text-[#1F2937] rounded focus:outline-none focus:ring-1`}
+                  className={`w-full px-3 py-1.5 bg-white border ${formErrors.amount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                    } text-[#1F2937] rounded focus:outline-none focus:ring-1`}
                   required
                 />
                 {formErrors.amount && <p className="text-red-500 text-[10px] font-bold mt-0.5">{formErrors.amount}</p>}
@@ -1207,9 +1203,8 @@ export default function CashOut() {
                   <p className="text-xs text-gray-500 mt-0.5">Date: {viewingVoucher.date}</p>
                 </div>
                 <span
-                  className={`px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${
-                    viewingVoucher.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}
+                  className={`px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${viewingVoucher.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}
                 >
                   {viewingVoucher.status}
                 </span>

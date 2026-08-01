@@ -349,7 +349,7 @@ export default function Products() {
     // Standard Validation checks
     if (!sku.trim()) newErrors.sku = 'SKU is required';
     if (!name.trim()) newErrors.name = 'Product Name is required';
-    
+
     const pPrice = parseFloat(purchasePrice) || 0;
     const sPrice = parseFloat(salePrice) || 0;
     const minSPrice = parseFloat(minimumSalePrice) || 0;
@@ -667,7 +667,7 @@ export default function Products() {
 
         const summaryDetails: { row: number; sku: string; name: string; reason: string }[] = [];
         const validInserts: { sql: string; params: any[] }[] = [];
-        
+
         // Track SKUs and Barcodes inside this file to prevent file-internal duplicates
         const processedSKUs = new Set<string>();
         const processedBarcodes = new Set<string>();
@@ -699,13 +699,13 @@ export default function Products() {
           const rawName = rowData[nameIdx]?.trim() || '';
           const rawBarcode = barcodeIdx !== -1 ? rowData[barcodeIdx]?.trim() || '' : '';
           const rawCategory = categoryIdx !== -1 ? rowData[categoryIdx]?.trim() || 'General' : 'General';
-          
+
           const rawPPrice = pPriceIdx !== -1 ? rowData[pPriceIdx]?.trim() : '0';
           const rawSPrice = sPriceIdx !== -1 ? rowData[sPriceIdx]?.trim() : '0';
           const rawMinSPrice = minSPriceIdx !== -1 ? rowData[minSPriceIdx]?.trim() : '';
           const rawStock = stockIdx !== -1 ? rowData[stockIdx]?.trim() : '0';
           const rawMinStock = minStockIdx !== -1 ? rowData[minStockIdx]?.trim() : '0';
-          
+
           const rawUnit = unitIdx !== -1 ? rowData[unitIdx]?.trim() : 'Piece';
           const rawDesc = descIdx !== -1 ? rowData[descIdx]?.trim() : '';
           const rawStatus = statusIdx !== -1 ? rowData[statusIdx]?.trim() : 'Active';
@@ -1240,9 +1240,8 @@ export default function Products() {
                           <td className="px-4 py-3.5 text-xs font-bold text-[#6B7280] uppercase tracking-wider">{p.unit}</td>
                           <td className="px-4 py-3.5 text-center">
                             <span
-                              className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${
-                                p.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-700'
-                              }`}
+                              className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${p.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-700'
+                                }`}
                             >
                               {p.status}
                             </span>
@@ -1330,11 +1329,10 @@ export default function Products() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${
-                            currentPage === pageNum
-                              ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
-                              : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${currentPage === pageNum
+                            ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
+                            : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
+                            }`}
                         >
                           {pageNum}
                         </button>
@@ -1395,9 +1393,8 @@ export default function Products() {
                       value={sku}
                       onChange={(e) => setSku(e.target.value)}
                       placeholder="e.g. PROD-1001"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.sku ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.sku ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.sku && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.sku}</p>}
                   </div>
@@ -1412,9 +1409,8 @@ export default function Products() {
                       value={barcode}
                       onChange={(e) => setBarcode(e.target.value)}
                       placeholder="e.g. 748392019"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.barcode ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.barcode ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.barcode && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.barcode}</p>}
                   </div>
@@ -1429,9 +1425,8 @@ export default function Products() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Cotton Thread 40/2"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.name ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.name && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.name}</p>}
                   </div>
@@ -1481,9 +1476,8 @@ export default function Products() {
                     <select
                       value={unit}
                       onChange={(e) => setUnit(e.target.value)}
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.unit ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1 cursor-pointer`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.unit ? 'border-red-500 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1 cursor-pointer`}
                     >
                       {ALLOWED_UNITS.map((u) => (
                         <option key={u} value={u}>
@@ -1529,9 +1523,8 @@ export default function Products() {
                       value={purchasePrice}
                       onChange={(e) => setPurchasePrice(e.target.value)}
                       placeholder="0.00"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.purchasePrice ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.purchasePrice ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.purchasePrice && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.purchasePrice}</p>}
                   </div>
@@ -1548,9 +1541,8 @@ export default function Products() {
                       value={salePrice}
                       onChange={(e) => setSalePrice(e.target.value)}
                       placeholder="0.00"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.salePrice ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.salePrice ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.salePrice && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.salePrice}</p>}
                   </div>
@@ -1567,9 +1559,8 @@ export default function Products() {
                       value={minimumSalePrice}
                       onChange={(e) => setMinimumSalePrice(e.target.value)}
                       placeholder="Same as sale price"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.minimumSalePrice ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.minimumSalePrice ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.minimumSalePrice && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.minimumSalePrice}</p>}
                   </div>
@@ -1586,9 +1577,8 @@ export default function Products() {
                       value={stock}
                       onChange={(e) => setStock(e.target.value)}
                       placeholder="0"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.stock ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.stock && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.stock}</p>}
                   </div>
@@ -1605,9 +1595,8 @@ export default function Products() {
                       value={minimumStock}
                       onChange={(e) => setMinimumStock(e.target.value)}
                       placeholder="0"
-                      className={`w-full px-3 py-2 bg-white border ${
-                        formErrors.minimumStock ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                      className={`w-full px-3 py-2 bg-white border ${formErrors.minimumStock ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                        } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                     />
                     {formErrors.minimumStock && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.minimumStock}</p>}
                   </div>
@@ -1684,9 +1673,8 @@ export default function Products() {
                     setCategoryError('');
                   }}
                   placeholder="e.g. Raw Materials"
-                  className={`w-full px-3 py-2 bg-white border ${
-                    categoryError ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                  } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                  className={`w-full px-3 py-2 bg-white border ${categoryError ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                    } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                   autoFocus
                 />
                 {categoryError && <p className="text-red-500 text-xs mt-1 font-semibold">{categoryError}</p>}
@@ -1736,9 +1724,8 @@ export default function Products() {
                   </p>
                 </div>
                 <span
-                  className={`inline-block px-3 py-1 text-xs font-black rounded-full uppercase tracking-wider ${
-                    viewingProduct.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}
+                  className={`inline-block px-3 py-1 text-xs font-black rounded-full uppercase tracking-wider ${viewingProduct.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}
                 >
                   {viewingProduct.status}
                 </span>

@@ -104,7 +104,7 @@ export async function getDatabaseDiagnostics(): Promise<any> {
 
     const cashInCountRes = await executeQuery('SELECT COUNT(*) as count FROM cash_in');
     const cashOutCountRes = await executeQuery('SELECT COUNT(*) as count FROM cash_out');
-    
+
     // Get backup settings info
     const lastBackupRes = await executeQuery("SELECT value FROM app_settings WHERE key = 'last_backup_date'");
     const lastBackupDate = lastBackupRes && lastBackupRes.length > 0 ? lastBackupRes[0].value : 'Never';

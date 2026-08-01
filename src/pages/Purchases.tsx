@@ -110,7 +110,7 @@ export default function Purchases() {
 
   // Column Visibility Preferences
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['purchaseNumber', 'date', 'vendorName', 'grandTotal', 'paidAmount', 'remainingAmount', 'status']);
-  
+
   const allColumns = [
     { key: 'purchaseNumber', label: 'Purchase No' },
     { key: 'date', label: 'Date' },
@@ -643,7 +643,7 @@ export default function Purchases() {
 
   const handlePrintClick = (purchase: PurchaseItem) => {
     setViewingPurchase(purchase);
-    
+
     (window as any).electron.invoke(
       'db-query',
       `SELECT pi.*, p.name AS product_name, p.sku AS product_sku, p.unit AS product_unit
@@ -1380,11 +1380,10 @@ export default function Purchases() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${
-                            currentPage === pageNum
-                              ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
-                              : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${currentPage === pageNum
+                            ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
+                            : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
+                            }`}
                         >
                           {pageNum}
                         </button>
@@ -1437,9 +1436,8 @@ export default function Purchases() {
                     value={purchaseNumber}
                     onChange={(e) => setPurchaseNumber(e.target.value)}
                     placeholder="e.g. PUR-1001"
-                    className={`w-full px-3 py-1.5 bg-white border ${
-                      formErrors.purchaseNumber ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                    } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                    className={`w-full px-3 py-1.5 bg-white border ${formErrors.purchaseNumber ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                   />
                   {formErrors.purchaseNumber && <p className="text-red-500 text-[11px] font-semibold mt-0.5">{formErrors.purchaseNumber}</p>}
                 </div>
@@ -1465,9 +1463,8 @@ export default function Purchases() {
                     value={vendorName}
                     onChange={(e) => setVendorName(e.target.value)}
                     placeholder="e.g. Asia Fabrics Ltd"
-                    className={`w-full px-3 py-1.5 bg-white border ${
-                      formErrors.vendorName ? 'border-red-500' : 'border-[#E5E7EB]'
-                    } text-[#1F2937] text-sm rounded-[6px] focus:outline-none`}
+                    className={`w-full px-3 py-1.5 bg-white border ${formErrors.vendorName ? 'border-red-500' : 'border-[#E5E7EB]'
+                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none`}
                   />
                   {formErrors.vendorName && <p className="text-red-500 text-[11px] font-semibold mt-0.5">{formErrors.vendorName}</p>}
                 </div>
@@ -1551,9 +1548,8 @@ export default function Purchases() {
                             <select
                               value={item.productId}
                               onChange={(e) => handleProductSelectionChange(idx, e.target.value)}
-                              className={`w-full px-2.5 py-1.5 bg-white border ${
-                                formErrors[`row_${idx}_product`] ? 'border-red-500' : 'border-[#E5E7EB]'
-                              } rounded-[4px] focus:outline-none text-xs`}
+                              className={`w-full px-2.5 py-1.5 bg-white border ${formErrors[`row_${idx}_product`] ? 'border-red-500' : 'border-[#E5E7EB]'
+                                } rounded-[4px] focus:outline-none text-xs`}
                             >
                               <option value={0}>Select Product...</option>
                               {products.map((p) => (
@@ -1572,9 +1568,8 @@ export default function Purchases() {
                               disabled={!item.productId}
                               value={item.quantity}
                               onChange={(e) => updateLineRow(idx, { quantity: parseFloat(e.target.value) || 0 })}
-                              className={`w-full px-2.5 py-1 bg-white border ${
-                                formErrors[`row_${idx}_quantity`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                              } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
+                              className={`w-full px-2.5 py-1 bg-white border ${formErrors[`row_${idx}_quantity`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                                } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
                             />
                             {formErrors[`row_${idx}_quantity`] && (
                               <p className="text-red-500 text-[10px] mt-0.5 text-right font-black">
@@ -1595,9 +1590,8 @@ export default function Purchases() {
                               disabled={!item.productId}
                               value={item.purchasePrice}
                               onChange={(e) => updateLineRow(idx, { purchasePrice: parseFloat(e.target.value) || 0 })}
-                              className={`w-full px-2.5 py-1 bg-white border ${
-                                formErrors[`row_${idx}_price`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                              } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
+                              className={`w-full px-2.5 py-1 bg-white border ${formErrors[`row_${idx}_price`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                                } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
                             />
                           </td>
 
@@ -1609,9 +1603,8 @@ export default function Purchases() {
                               disabled={!item.productId}
                               value={item.discount}
                               onChange={(e) => updateLineRow(idx, { discount: parseFloat(e.target.value) || 0 })}
-                              className={`w-full px-2.5 py-1 bg-white border ${
-                                formErrors[`row_${idx}_discount`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                              } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
+                              className={`w-full px-2.5 py-1 bg-white border ${formErrors[`row_${idx}_discount`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                                } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
                             />
                           </td>
 
@@ -1663,9 +1656,8 @@ export default function Purchases() {
                         min="0"
                         value={headerDiscount}
                         onChange={(e) => setHeaderDiscount(e.target.value)}
-                        className={`w-full px-2 py-1 bg-white border ${
-                          formErrors.headerDiscount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                        } rounded text-right focus:outline-none focus:ring-1 text-xs`}
+                        className={`w-full px-2 py-1 bg-white border ${formErrors.headerDiscount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                          } rounded text-right focus:outline-none focus:ring-1 text-xs`}
                       />
                     </div>
                   </div>
@@ -1685,9 +1677,8 @@ export default function Purchases() {
                         min="0"
                         value={paidAmount}
                         onChange={(e) => setPaidAmount(e.target.value)}
-                        className={`w-full px-2 py-1 bg-white border ${
-                          formErrors.paidAmount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                        } rounded text-right focus:outline-none focus:ring-1 text-xs`}
+                        className={`w-full px-2 py-1 bg-white border ${formErrors.paidAmount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                          } rounded text-right focus:outline-none focus:ring-1 text-xs`}
                       />
                     </div>
                   </div>
@@ -1753,9 +1744,8 @@ export default function Purchases() {
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span
-                    className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${
-                      viewingPurchase.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}
+                    className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${viewingPurchase.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}
                   >
                     {viewingPurchase.status}
                   </span>

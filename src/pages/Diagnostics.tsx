@@ -84,7 +84,7 @@ export default function Diagnostics() {
           <SidebarToggle />
           <span className="font-semibold text-lg tracking-wide">Factory App</span>
         </div>
-        
+
         <div className="flex items-center gap-1.5 text-sm font-semibold">
           <span className="bg-white/10 px-3 py-1.5 rounded-[6px] tracking-wide text-white select-none">
             ⚙ System Diagnostics
@@ -105,7 +105,7 @@ export default function Diagnostics() {
               SQLite Database Sizes, Stats, and Performance Cleaning Tools
             </p>
           </div>
-          
+
           <button
             onClick={fetchStats}
             disabled={loading}
@@ -120,16 +120,16 @@ export default function Diagnostics() {
       {/* Content Area */}
       <main className="flex-grow p-8 overflow-y-auto">
         <div className="max-w-[1600px] w-full mx-auto space-y-6">
-          
+
           {/* Main Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+
             {/* Database File & Platform details card */}
             <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-6 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
               <h3 className="text-sm font-bold text-[#1F2937] border-b border-[#F3F4F6] pb-3 mb-4 flex items-center gap-2 uppercase tracking-wider text-slate-500">
                 <Database className="w-4 h-4 text-blue-500" /> Database & Storage Specs
               </h3>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between border-b border-[#FAFAFB] pb-2">
                   <span className="text-xs font-semibold text-slate-500">Active Database File Size</span>
@@ -157,13 +157,13 @@ export default function Diagnostics() {
               <h3 className="text-sm font-bold text-[#1F2937] border-b border-[#F3F4F6] pb-3 mb-4 flex items-center gap-2 uppercase tracking-wider text-slate-500">
                 <Activity className="w-4 h-4 text-emerald-500" /> Database Records Counts
               </h3>
-              
+
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-lg text-center">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Products</span>
                   <span className="text-2xl font-black text-slate-700 block mt-1">{stats.productsCount || 0}</span>
                 </div>
-                
+
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-lg text-center">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Customers</span>
                   <span className="text-2xl font-black text-slate-700 block mt-1">{stats.customersCount || 0}</span>

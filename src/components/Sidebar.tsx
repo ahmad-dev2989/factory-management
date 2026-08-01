@@ -87,7 +87,7 @@ export function SidebarToggle() {
     if (stored) {
       try {
         list = JSON.parse(stored);
-      } catch (err) {}
+      } catch (err) { }
     }
 
     let title = '';
@@ -151,8 +151,8 @@ export function SidebarToggle() {
 
       {/* Sidebar Overlay */}
       {isOpen && (
-        <SidebarPanel 
-          onClose={() => setIsOpen(false)} 
+        <SidebarPanel
+          onClose={() => setIsOpen(false)}
           onOpenAbout={() => { setIsOpen(false); setShowAbout(true); }}
         />
       )}
@@ -177,19 +177,19 @@ function SidebarPanel({ onClose, onOpenAbout }: { onClose: () => void; onOpenAbo
     // Collapsed groups state
     const savedCollapsed = localStorage.getItem('sidebar_collapsed_groups');
     if (savedCollapsed) {
-      try { setCollapsedGroups(JSON.parse(savedCollapsed)); } catch (e) {}
+      try { setCollapsedGroups(JSON.parse(savedCollapsed)); } catch (e) { }
     }
 
     // Favorites
     const savedFavorites = localStorage.getItem('sidebar_favorites');
     if (savedFavorites) {
-      try { setFavorites(JSON.parse(savedFavorites)); } catch (e) {}
+      try { setFavorites(JSON.parse(savedFavorites)); } catch (e) { }
     }
 
     // Recent pages
     const savedRecents = localStorage.getItem('recently_opened');
     if (savedRecents) {
-      try { setRecentPages(JSON.parse(savedRecents)); } catch (e) {}
+      try { setRecentPages(JSON.parse(savedRecents)); } catch (e) { }
     }
   }, []);
 
@@ -256,7 +256,7 @@ function SidebarPanel({ onClose, onOpenAbout }: { onClose: () => void; onOpenAbo
 
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto py-2">
-          
+
           {/* Favorite Pages section */}
           {favoriteItems.length > 0 && (
             <div className="mb-2 border-b border-[#F3F4F6] pb-2">
@@ -280,17 +280,16 @@ function SidebarPanel({ onClose, onOpenAbout }: { onClose: () => void; onOpenAbo
                     <button
                       key={item.route}
                       onClick={() => handleNavigate(item.route)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-[6px] text-sm font-semibold transition-all cursor-pointer focus:outline-none ${
-                        location.pathname === item.route ? 'bg-amber-50 text-amber-700' : 'text-[#374151] hover:bg-[#F6F8FB]'
-                      }`}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-[6px] text-sm font-semibold transition-all cursor-pointer focus:outline-none ${location.pathname === item.route ? 'bg-amber-50 text-amber-700' : 'text-[#374151] hover:bg-[#F6F8FB]'
+                        }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="text-amber-500">{item.icon}</span>
                         <span className="truncate">{item.title}</span>
                       </div>
-                      <Star 
-                        onClick={(e) => toggleFavorite(e, item.route)} 
-                        className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0 hover:scale-110 transition-transform" 
+                      <Star
+                        onClick={(e) => toggleFavorite(e, item.route)}
+                        className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0 hover:scale-110 transition-transform"
                       />
                     </button>
                   ))}
@@ -327,11 +326,10 @@ function SidebarPanel({ onClose, onOpenAbout }: { onClose: () => void; onOpenAbo
                         <button
                           key={item.title}
                           onClick={() => handleNavigate(item.route)}
-                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-all cursor-pointer focus:outline-none group ${
-                            isActive
+                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-all cursor-pointer focus:outline-none group ${isActive
                               ? 'bg-[#2F80ED]/10 text-[#2F80ED] font-semibold'
                               : 'text-[#374151] hover:bg-[#F6F8FB]'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <span className={isActive ? 'text-[#2F80ED]' : 'text-[#6B7280]'}>
@@ -339,15 +337,14 @@ function SidebarPanel({ onClose, onOpenAbout }: { onClose: () => void; onOpenAbo
                             </span>
                             <span className="truncate">{item.title}</span>
                           </div>
-                          
+
                           {/* Favorite toggle star */}
-                          <Star 
-                            onClick={(e) => toggleFavorite(e, item.route)} 
-                            className={`w-3.5 h-3.5 shrink-0 transition-all ${
-                              isFav 
-                                ? 'text-amber-500 fill-amber-500' 
+                          <Star
+                            onClick={(e) => toggleFavorite(e, item.route)}
+                            className={`w-3.5 h-3.5 shrink-0 transition-all ${isFav
+                                ? 'text-amber-500 fill-amber-500'
                                 : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-amber-500'
-                            }`}
+                              }`}
                           />
                         </button>
                       );
@@ -403,7 +400,7 @@ function SidebarPanel({ onClose, onOpenAbout }: { onClose: () => void; onOpenAbo
             <HelpCircle className="w-4 h-4 text-blue-500" />
             <span>About Application</span>
           </button>
-          
+
           <p className="text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-wider text-center select-none">
             Factory App v0.0.3
           </p>

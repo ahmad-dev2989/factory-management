@@ -42,7 +42,7 @@ export default function Login(_props: { adminPassword?: string }) {
       {/* Spacer to push card down slightly */}
       <div className="flex-1 flex items-center justify-center w-full">
         <div className="w-full max-w-[420px] bg-white border border-[#E5E7EB] rounded-[10px] shadow-sm p-8">
-          
+
           {/* Logo Placeholder & Headings */}
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 bg-[#EEF5FF] border border-[#2F80ED]/20 rounded-full flex items-center justify-center mb-4">

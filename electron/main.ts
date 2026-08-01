@@ -105,7 +105,7 @@ app.whenReady().then(async () => {
   } catch (error: any) {
     logMessage('ERROR', 'Database', `Critical database initialization failure on startup: ${error.message}`);
   }
-  
+
   registerDatabaseIPCHandlers();
   registerStorageIPCHandlers();
 

@@ -119,7 +119,7 @@ export default function Sales() {
 
   // Column Visibility Preferences
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['invoiceNumber', 'date', 'customerName', 'grandTotal', 'paidAmount', 'remainingAmount', 'status']);
-  
+
   const allColumns = [
     { key: 'invoiceNumber', label: 'Invoice No' },
     { key: 'date', label: 'Date' },
@@ -129,7 +129,7 @@ export default function Sales() {
     { key: 'remainingAmount', label: 'Remaining' },
     { key: 'status', label: 'Status' }
   ];
-  
+
   // Print Preview Dialog States
   const [printPreviewSale, setPrintPreviewSale] = useState<SaleItem | null>(null);
   const [printPreviewLineItems, setPrintPreviewLineItems] = useState<any[]>([]);
@@ -159,7 +159,7 @@ export default function Sales() {
   const [headerDiscount, setHeaderDiscount] = useState<string>('0');
   const [paidAmount, setPaidAmount] = useState<string>('0');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  
+
   // Track original items quantities when editing (for stock checks)
   const [originalItemsQuantities, setOriginalItemsQuantities] = useState<Record<number, number>>({});
 
@@ -288,7 +288,7 @@ export default function Sales() {
         if (parsed.invoicePrefix) prefix = parsed.invoicePrefix;
         if (parsed.startingInvoiceNumber) startingNo = parseInt(parsed.startingInvoiceNumber) || 1001;
       }
-      
+
       const salesRes = await (window as any).electron.invoke('db-query', 'SELECT MAX(id) AS max_id FROM sales');
       const nextId = (salesRes && salesRes[0] && salesRes[0].max_id) ? (salesRes[0].max_id + 1) : 1;
       const numberPart = startingNo + nextId - 1;
@@ -327,7 +327,7 @@ export default function Sales() {
   }, [lineItems]);
 
   const discountVal = parseFloat(headerDiscount) || 0;
-  
+
   const grandTotal = useMemo(() => {
     const total = subtotal - discountVal;
     return total < 0 ? 0 : total;
@@ -422,7 +422,7 @@ export default function Sales() {
     setHeaderDiscount('0');
     setPaidAmount('0');
     setFormErrors({});
-    
+
     // Add default blank item
     setLineItems([
       {
@@ -702,7 +702,7 @@ export default function Sales() {
   // Immediate print action
   const handlePrintClick = (sale: SaleItem) => {
     setViewingSale(sale);
-    
+
     // Fetch items from DB
     (window as any).electron.invoke(
       'db-query',
@@ -1461,11 +1461,10 @@ export default function Sales() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${
-                            currentPage === pageNum
-                              ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
-                              : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-[6px] border transition-all focus:outline-none cursor-pointer ${currentPage === pageNum
+                            ? 'bg-[#2F80ED] border-[#2F80ED] text-white'
+                            : 'bg-white border-[#E5E7EB] text-[#1F2937] hover:bg-[#F6F8FB]'
+                            }`}
                         >
                           {pageNum}
                         </button>
@@ -1490,7 +1489,7 @@ export default function Sales() {
       {isInvoiceModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-[95vw] w-full p-6 flex flex-col h-[92vh]">
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3 shrink-0">
               <div className="flex items-center gap-3">
@@ -1523,9 +1522,8 @@ export default function Sales() {
                     value={invoiceNumber}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
                     placeholder="e.g. INV-1001"
-                    className={`w-full px-3 py-1.5 bg-white border ${
-                      formErrors.invoiceNumber ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                    } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
+                    className={`w-full px-3 py-1.5 bg-white border ${formErrors.invoiceNumber ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:ring-1`}
                   />
                   {formErrors.invoiceNumber && <p className="text-red-500 text-[11px] font-semibold mt-0.5">{formErrors.invoiceNumber}</p>}
                 </div>
@@ -1551,9 +1549,8 @@ export default function Sales() {
                   <select
                     value={selectedCustomerId}
                     onChange={(e) => setSelectedCustomerId(e.target.value)}
-                    className={`w-full px-3 py-1.5 bg-white border ${
-                      formErrors.customerId ? 'border-red-500' : 'border-[#E5E7EB]'
-                    } text-[#1F2937] text-sm rounded-[6px] focus:outline-none cursor-pointer`}
+                    className={`w-full px-3 py-1.5 bg-white border ${formErrors.customerId ? 'border-red-500' : 'border-[#E5E7EB]'
+                      } text-[#1F2937] text-sm rounded-[6px] focus:outline-none cursor-pointer`}
                   >
                     <option value="">Select Customer...</option>
                     {customers.map((c) => (
@@ -1650,9 +1647,8 @@ export default function Sales() {
                             <select
                               value={item.productId}
                               onChange={(e) => handleProductSelectionChange(idx, e.target.value)}
-                              className={`w-full px-2.5 py-1.5 bg-white border ${
-                                formErrors[`row_${idx}_product`] ? 'border-red-500' : 'border-[#E5E7EB]'
-                              } rounded-[4px] focus:outline-none text-xs`}
+                              className={`w-full px-2.5 py-1.5 bg-white border ${formErrors[`row_${idx}_product`] ? 'border-red-500' : 'border-[#E5E7EB]'
+                                } rounded-[4px] focus:outline-none text-xs`}
                             >
                               <option value={0}>Select Product...</option>
                               {products.map((p) => (
@@ -1677,9 +1673,8 @@ export default function Sales() {
                               disabled={!item.productId}
                               value={item.quantity}
                               onChange={(e) => updateLineRow(idx, { quantity: parseFloat(e.target.value) || 0 })}
-                              className={`w-full px-2.5 py-1 bg-white border ${
-                                formErrors[`row_${idx}_quantity`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                              } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
+                              className={`w-full px-2.5 py-1 bg-white border ${formErrors[`row_${idx}_quantity`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                                } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
                             />
                             {formErrors[`row_${idx}_quantity`] && (
                               <p className="text-red-500 text-[10px] mt-0.5 text-right font-black">
@@ -1702,9 +1697,8 @@ export default function Sales() {
                               disabled={!item.productId}
                               value={item.unitPrice}
                               onChange={(e) => updateLineRow(idx, { unitPrice: parseFloat(e.target.value) || 0 })}
-                              className={`w-full px-2.5 py-1 bg-white border ${
-                                formErrors[`row_${idx}_price`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                              } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
+                              className={`w-full px-2.5 py-1 bg-white border ${formErrors[`row_${idx}_price`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                                } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
                             />
                           </td>
 
@@ -1717,9 +1711,8 @@ export default function Sales() {
                               disabled={!item.productId}
                               value={item.discount}
                               onChange={(e) => updateLineRow(idx, { discount: parseFloat(e.target.value) || 0 })}
-                              className={`w-full px-2.5 py-1 bg-white border ${
-                                formErrors[`row_${idx}_discount`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                              } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
+                              className={`w-full px-2.5 py-1 bg-white border ${formErrors[`row_${idx}_discount`] ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                                } rounded-[4px] text-right focus:outline-none focus:ring-1 text-xs`}
                             />
                           </td>
 
@@ -1778,9 +1771,8 @@ export default function Sales() {
                         min="0"
                         value={headerDiscount}
                         onChange={(e) => setHeaderDiscount(e.target.value)}
-                        className={`w-full px-2 py-1 bg-white border ${
-                          formErrors.headerDiscount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                        } rounded text-right focus:outline-none focus:ring-1 text-xs`}
+                        className={`w-full px-2 py-1 bg-white border ${formErrors.headerDiscount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                          } rounded text-right focus:outline-none focus:ring-1 text-xs`}
                       />
                     </div>
                   </div>
@@ -1802,9 +1794,8 @@ export default function Sales() {
                         min="0"
                         value={paidAmount}
                         onChange={(e) => setPaidAmount(e.target.value)}
-                        className={`w-full px-2 py-1 bg-white border ${
-                          formErrors.paidAmount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
-                        } rounded text-right focus:outline-none focus:ring-1 text-xs`}
+                        className={`w-full px-2 py-1 bg-white border ${formErrors.paidAmount ? 'border-red-500 focus:ring-red-500' : 'border-[#E5E7EB] focus:ring-[#2F80ED]'
+                          } rounded text-right focus:outline-none focus:ring-1 text-xs`}
                       />
                     </div>
                   </div>
@@ -1844,7 +1835,7 @@ export default function Sales() {
       {isViewModalOpen && viewingSale && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-[#E5E7EB] rounded-[10px] shadow-lg max-w-4xl w-full p-6 flex flex-col max-h-[85vh]">
-            
+
             <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3 shrink-0">
               <h3 className="text-base font-bold text-[#1F2937]">Invoice Details</h3>
               <div className="flex items-center gap-3">
@@ -1874,9 +1865,8 @@ export default function Sales() {
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span
-                    className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${
-                      viewingSale.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}
+                    className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${viewingSale.status === 'Active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}
                   >
                     {viewingSale.status}
                   </span>
