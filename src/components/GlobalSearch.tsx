@@ -240,8 +240,12 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[9999] flex items-start justify-center pt-24 font-sans select-none animate-fadeIn">
+    <div 
+      onClick={onClose}
+      className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[9999] flex items-start justify-center pt-24 font-sans select-none animate-fadeIn"
+    >
       <div 
+        onClick={(e) => e.stopPropagation()}
         className="bg-white w-[750px] max-h-[580px] rounded-[12px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-[#E5E7EB] flex flex-col overflow-hidden animate-zoomIn"
       >
         {/* Search Input Bar */}
@@ -264,9 +268,13 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
               <X className="w-4 h-4 text-[#6B7280]" />
             </button>
           )}
-          <span className="text-[10px] font-bold text-[#9CA3AF] bg-[#F3F4F6] px-2 py-1 rounded-[4px] select-none">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="text-[10px] font-bold text-[#9CA3AF] bg-[#F3F4F6] hover:bg-[#E5E7EB] px-2 py-1 rounded-[4px] select-none cursor-pointer focus:outline-none"
+          >
             ESC
-          </span>
+          </button>
         </div>
 
         {/* Categories Tab Bar */}
