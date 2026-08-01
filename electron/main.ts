@@ -7,6 +7,15 @@ import { registerDatabaseIPCHandlers } from './database/ipc.js';
 import { registerStorageIPCHandlers } from './storage/storageIpc.js';
 import { registerBackupIPCHandlers } from './storage/backupIpc.js';
 import { registerUpdateIPCHandlers } from './storage/updateIpc.js';
+import {
+  logMessage,
+  getLogs,
+  clearLogs,
+  exportLogs,
+  getDatabaseDiagnostics,
+  optimizeDatabase,
+  cleanupTemporaryStorage
+} from './storage/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,11 +98,12 @@ function createWindow(state: WindowState) {
 }
 
 app.whenReady().then(async () => {
+  logMessage('INFO', 'System', 'Application launched.');
   try {
     await initializeDatabase();
-    console.log('[Database] Database startup initialization complete.');
-  } catch (error) {
-    console.error('[Database] Critical database initialization failure on startup:', error);
+    logMessage('INFO', 'Database', 'Database startup initialization complete.');
+  } catch (error: any) {
+    logMessage('ERROR', 'Database', `Critical database initialization failure on startup: ${error.message}`);
   }
   
   registerDatabaseIPCHandlers();
@@ -116,6 +126,31 @@ app.whenReady().then(async () => {
   registerBackupIPCHandlers(mainWindow!);
   registerUpdateIPCHandlers(mainWindow!);
 
+  // Register logger / diagnostics / storage cleanup handlers
+  ipcMain.handle('get-logs', () => {
+    return getLogs();
+  });
+
+  ipcMain.handle('clear-logs', () => {
+    return clearLogs();
+  });
+
+  ipcMain.handle('export-logs', () => {
+    return exportLogs(mainWindow);
+  });
+
+  ipcMain.handle('db-diagnostics', () => {
+    return getDatabaseDiagnostics();
+  });
+
+  ipcMain.handle('db-vacuum', () => {
+    return optimizeDatabase();
+  });
+
+  ipcMain.handle('storage-cleanup', () => {
+    return cleanupTemporaryStorage();
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow(windowState);
@@ -124,6 +159,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  logMessage('INFO', 'System', 'All windows closed. Quitting application.');
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -143,3 +179,4 @@ ipcMain.handle('get-app-version', async () => {
     return '1.0.0';
   }
 });
+

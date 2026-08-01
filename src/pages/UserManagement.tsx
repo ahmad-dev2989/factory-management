@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Search, Plus, Edit, Trash2, Eye, EyeOff, X, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { SidebarToggle } from '../components/Sidebar';
 
 interface UserItem {
   id: number;
@@ -267,9 +268,7 @@ export default function UserManagement() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
-            LB
-          </div>
+          <SidebarToggle />
           <span className="font-semibold text-lg tracking-wide">
             Factory App
           </span>

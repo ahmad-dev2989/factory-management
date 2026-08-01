@@ -21,6 +21,8 @@ import LinkedAccounts from './pages/LinkedAccounts';
 import SystemPreferences from './pages/SystemPreferences';
 import BackupRestore from './pages/BackupRestore';
 import Splash from './pages/Splash';
+import Diagnostics from './pages/Diagnostics';
+import LogViewer from './pages/LogViewer';
 import { UpdateProvider } from './context/UpdateContext';
 import { NotificationProvider } from './context/NotificationContext';
 
@@ -56,6 +58,8 @@ export default function App() {
             <Route path="/linked-accounts" element={<LinkedAccounts />} />
             <Route path="/system-preferences" element={<SystemPreferences />} />
             <Route path="/backup-restore" element={<BackupRestore />} />
+            <Route path="/diagnostics" element={<Diagnostics />} />
+            <Route path="/log-viewer" element={<LogViewer />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </UpdateProvider>
@@ -63,3 +67,4 @@ export default function App() {
     </Router>
   );
 }
+

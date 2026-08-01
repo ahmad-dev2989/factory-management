@@ -20,6 +20,8 @@ import {
   ChevronDown,
   Paperclip
 } from 'lucide-react';
+import { SidebarToggle } from '../components/Sidebar';
+import { TableColumnCustomizer } from '../components/TableColumnCustomizer';
 
 interface CashOutItem {
   id: number;
@@ -87,6 +89,24 @@ export default function CashOut() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterAccount, setFilterAccount] = useState('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterMinAmount, setFilterMinAmount] = useState('');
+  const [filterMaxAmount, setFilterMaxAmount] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
+
+  // Column Visibility Preferences
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(['voucherNumber', 'date', 'paidTo', 'category', 'accountName', 'amount', 'status']);
+  
+  const allColumns = [
+    { key: 'voucherNumber', label: 'Voucher No' },
+    { key: 'date', label: 'Date' },
+    { key: 'paidTo', label: 'Paid To' },
+    { key: 'category', label: 'Category' },
+    { key: 'accountName', label: 'Account' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'status', label: 'Status' }
+  ];
 
   // Sorting
   const [sortField, setSortField] = useState<keyof CashOutItem>('voucherNumber');
@@ -403,9 +423,34 @@ export default function CashOut() {
         matchAcc = v.accountName === filterAccount;
       }
 
-      return matchQuery && matchCat && matchAcc;
+      let matchStartDate = true;
+      if (filterStartDate) {
+        matchStartDate = v.date >= filterStartDate;
+      }
+
+      let matchEndDate = true;
+      if (filterEndDate) {
+        matchEndDate = v.date <= filterEndDate;
+      }
+
+      let matchMinAmount = true;
+      if (filterMinAmount) {
+        matchMinAmount = v.amount >= Number(filterMinAmount);
+      }
+
+      let matchMaxAmount = true;
+      if (filterMaxAmount) {
+        matchMaxAmount = v.amount <= Number(filterMaxAmount);
+      }
+
+      let matchStatus = true;
+      if (filterStatus !== 'All') {
+        matchStatus = v.status === filterStatus;
+      }
+
+      return matchQuery && matchCat && matchAcc && matchStartDate && matchEndDate && matchMinAmount && matchMaxAmount && matchStatus;
     });
-  }, [vouchers, searchQuery, filterCategory, filterAccount]);
+  }, [vouchers, searchQuery, filterCategory, filterAccount, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount, filterStatus]);
 
   // Sorting
   const sortedVouchers = useMemo(() => {
@@ -440,7 +485,7 @@ export default function CashOut() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCategory, filterAccount, rowsPerPage]);
+  }, [searchQuery, filterCategory, filterAccount, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount, filterStatus, rowsPerPage]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F6F8FB] select-none min-h-screen">
@@ -522,9 +567,7 @@ export default function CashOut() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
-            LB
-          </div>
+          <SidebarToggle />
           <span className="font-semibold text-lg tracking-wide">Factory App</span>
         </div>
         <div className="flex items-center gap-5">
@@ -629,11 +672,18 @@ export default function CashOut() {
                   >
                     <RefreshCw className="w-4 h-4 text-[#6B7280]" />
                   </button>
+                  <TableColumnCustomizer
+                    tableName="cash_out"
+                    columns={allColumns}
+                    visibleColumns={visibleColumns}
+                    onChange={setVisibleColumns}
+                  />
                 </div>
               </div>
 
               {/* Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-[#F6F8FB] p-4 rounded-[8px] border border-[#E5E7EB]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-[#F6F8FB] p-4 rounded-[8px] border border-[#E5E7EB]">
+                {/* Category Filter */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
                     Filter by Category
@@ -652,6 +702,7 @@ export default function CashOut() {
                   </select>
                 </div>
 
+                {/* Account Filter */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
                     Filter by Bank Account
@@ -669,6 +720,76 @@ export default function CashOut() {
                     ))}
                   </select>
                 </div>
+
+                {/* Status Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Status
+                  </label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED] cursor-pointer"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                {/* Date range start */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
+
+                {/* Date range end */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
+
+                {/* Min Amount */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Min Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={filterMinAmount}
+                    onChange={(e) => setFilterMinAmount(e.target.value)}
+                    placeholder="Min amount"
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
+
+                {/* Max Amount */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Max Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={filterMaxAmount}
+                    onChange={(e) => setFilterMaxAmount(e.target.value)}
+                    placeholder="Max amount"
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
               </div>
             </div>
 
@@ -678,58 +799,72 @@ export default function CashOut() {
                 <table className="min-w-full divide-y divide-[#E5E7EB] text-left text-sm whitespace-nowrap">
                   <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none">
                     <tr>
-                      <th
-                        className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('voucherNumber');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          Voucher No
-                          {sortField === 'voucherNumber' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th
-                        className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('date');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          Date
-                          {sortField === 'date' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th
-                        className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('paidTo');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          Paid To
-                          {sortField === 'paidTo' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3.5">Category</th>
-                      <th className="px-4 py-3.5">Account</th>
-                      <th
-                        className="px-4 py-3.5 text-right cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('amount');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          Amount
-                          {sortField === 'amount' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
+                      {visibleColumns.includes('voucherNumber') && (
+                        <th
+                          className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('voucherNumber');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Voucher No
+                            {sortField === 'voucherNumber' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('date') && (
+                        <th
+                          className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('date');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Date
+                            {sortField === 'date' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('paidTo') && (
+                        <th
+                          className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('paidTo');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Paid To
+                            {sortField === 'paidTo' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('category') && (
+                        <th className="px-4 py-3.5">Category</th>
+                      )}
+                      {visibleColumns.includes('accountName') && (
+                        <th className="px-4 py-3.5">Account</th>
+                      )}
+                      {visibleColumns.includes('amount') && (
+                        <th
+                          className="px-4 py-3.5 text-right cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('amount');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            Amount
+                            {sortField === 'amount' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
                       <th className="px-4 py-3.5">Reference</th>
-                      <th className="px-4 py-3.5 text-center">Status</th>
+                      {visibleColumns.includes('status') && (
+                        <th className="px-4 py-3.5 text-center">Status</th>
+                      )}
                       <th className="px-4 py-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -742,22 +877,36 @@ export default function CashOut() {
 
                       return (
                         <tr key={v.id} className={`hover:bg-[#F6F8FB]/50 transition-colors ${v.status === 'Cancelled' ? 'opacity-65' : ''}`}>
-                          <td className="px-4 py-4 font-semibold text-[#2F80ED]">{v.voucherNumber}</td>
-                          <td className="px-4 py-4">{v.date}</td>
-                          <td className="px-4 py-4 font-bold text-gray-800">{v.paidTo}</td>
-                          <td className="px-4 py-4">
-                            <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                              {v.category}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 font-semibold text-gray-700">{v.accountName}</td>
-                          <td className="px-4 py-4 text-right font-bold text-[#EB5757]">{formatCurrency(v.amount)}</td>
+                          {visibleColumns.includes('voucherNumber') && (
+                            <td className="px-4 py-4 font-semibold text-[#2F80ED]">{v.voucherNumber}</td>
+                          )}
+                          {visibleColumns.includes('date') && (
+                            <td className="px-4 py-4">{v.date}</td>
+                          )}
+                          {visibleColumns.includes('paidTo') && (
+                            <td className="px-4 py-4 font-bold text-gray-800">{v.paidTo}</td>
+                          )}
+                          {visibleColumns.includes('category') && (
+                            <td className="px-4 py-4">
+                              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                {v.category}
+                              </span>
+                            </td>
+                          )}
+                          {visibleColumns.includes('accountName') && (
+                            <td className="px-4 py-4 font-semibold text-gray-700">{v.accountName}</td>
+                          )}
+                          {visibleColumns.includes('amount') && (
+                            <td className="px-4 py-4 text-right font-bold text-[#EB5757]">{formatCurrency(v.amount)}</td>
+                          )}
                           <td className="px-4 py-4 text-gray-500 text-xs font-bold">{v.reference || '-'}</td>
-                          <td className="px-4 py-4 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${statusClass}`}>
-                              {v.status}
-                            </span>
-                          </td>
+                          {visibleColumns.includes('status') && (
+                            <td className="px-4 py-4 text-center">
+                              <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${statusClass}`}>
+                                {v.status}
+                              </span>
+                            </td>
+                          )}
                           <td className="px-4 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button

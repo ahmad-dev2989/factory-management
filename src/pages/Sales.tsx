@@ -19,6 +19,9 @@ import {
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
+import { SidebarToggle } from '../components/Sidebar';
+import { TableColumnCustomizer } from '../components/TableColumnCustomizer';
+import { PrintPreview } from '../components/PrintPreview';
 
 interface SaleItem {
   id: number;
@@ -107,6 +110,29 @@ export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('All');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterMinAmount, setFilterMinAmount] = useState('');
+  const [filterMaxAmount, setFilterMaxAmount] = useState('');
+  const [filterAccountId, setFilterAccountId] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
+
+  // Column Visibility Preferences
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(['invoiceNumber', 'date', 'customerName', 'grandTotal', 'paidAmount', 'remainingAmount', 'status']);
+  
+  const allColumns = [
+    { key: 'invoiceNumber', label: 'Invoice No' },
+    { key: 'date', label: 'Date' },
+    { key: 'customerName', label: 'Customer' },
+    { key: 'grandTotal', label: 'Grand Total' },
+    { key: 'paidAmount', label: 'Paid' },
+    { key: 'remainingAmount', label: 'Remaining' },
+    { key: 'status', label: 'Status' }
+  ];
+  
+  // Print Preview Dialog States
+  const [printPreviewSale, setPrintPreviewSale] = useState<SaleItem | null>(null);
+  const [printPreviewLineItems, setPrintPreviewLineItems] = useState<any[]>([]);
 
   // Sorting
   const [sortField, setSortField] = useState<keyof SaleItem>('invoiceNumber');
@@ -675,10 +701,9 @@ export default function Sales() {
 
   // Immediate print action
   const handlePrintClick = (sale: SaleItem) => {
-    // Populate states and trigger standard browser printer
     setViewingSale(sale);
     
-    // Fetch items synchronously first
+    // Fetch items from DB
     (window as any).electron.invoke(
       'db-query',
       `SELECT si.*, p.name AS product_name, p.sku AS product_sku, p.unit AS product_unit
@@ -700,11 +725,8 @@ export default function Sales() {
           availableStock: 0
         }));
         setViewingLineItems(mapped);
-
-        // Allow DOM update, then print
-        setTimeout(() => {
-          window.print();
-        }, 300);
+        setPrintPreviewLineItems(mapped);
+        setPrintPreviewSale(sale);
       }
     });
   };
@@ -743,9 +765,39 @@ export default function Sales() {
         }
       }
 
-      return matchQuery && matchCustomer && matchPayment;
+      let matchStartDate = true;
+      if (filterStartDate) {
+        matchStartDate = s.date >= filterStartDate;
+      }
+
+      let matchEndDate = true;
+      if (filterEndDate) {
+        matchEndDate = s.date <= filterEndDate;
+      }
+
+      let matchMinAmount = true;
+      if (filterMinAmount) {
+        matchMinAmount = s.grandTotal >= Number(filterMinAmount);
+      }
+
+      let matchMaxAmount = true;
+      if (filterMaxAmount) {
+        matchMaxAmount = s.grandTotal <= Number(filterMaxAmount);
+      }
+
+      let matchAccount = true;
+      if (filterAccountId !== 'All') {
+        matchAccount = s.paymentAccountId === Number(filterAccountId);
+      }
+
+      let matchStatus = true;
+      if (filterStatus !== 'All') {
+        matchStatus = s.status === filterStatus;
+      }
+
+      return matchQuery && matchCustomer && matchPayment && matchStartDate && matchEndDate && matchMinAmount && matchMaxAmount && matchAccount && matchStatus;
     });
-  }, [sales, searchQuery, filterCustomer, filterPaymentStatus]);
+  }, [sales, searchQuery, filterCustomer, filterPaymentStatus, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount, filterAccountId, filterStatus]);
 
   // Sorting
   const sortedSales = useMemo(() => {
@@ -780,7 +832,7 @@ export default function Sales() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCustomer, filterPaymentStatus, rowsPerPage]);
+  }, [searchQuery, filterCustomer, filterPaymentStatus, filterStartDate, filterEndDate, filterMinAmount, filterMaxAmount, filterAccountId, filterStatus, rowsPerPage]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F6F8FB] select-none min-h-screen">
@@ -929,9 +981,7 @@ export default function Sales() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
-            LB
-          </div>
+          <SidebarToggle />
           <span className="font-semibold text-lg tracking-wide">Factory App</span>
         </div>
         <div className="flex items-center gap-5">
@@ -1040,11 +1090,17 @@ export default function Sales() {
                   >
                     <RefreshCw className="w-4 h-4 text-[#6B7280]" />
                   </button>
+                  <TableColumnCustomizer
+                    tableName="sales"
+                    columns={allColumns}
+                    visibleColumns={visibleColumns}
+                    onChange={setVisibleColumns}
+                  />
                 </div>
               </div>
 
               {/* Filters dropdowns */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-[#F6F8FB] p-4 rounded-[8px] border border-[#E5E7EB]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-[#F6F8FB] p-4 rounded-[8px] border border-[#E5E7EB]">
                 {/* Customer Filter */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
@@ -1080,6 +1136,95 @@ export default function Sales() {
                     <option value="Unpaid">Unpaid / On Credit</option>
                   </select>
                 </div>
+
+                {/* Invoice Status Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Invoice Status
+                  </label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED] cursor-pointer"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                {/* Account Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Bank / Deposit Account
+                  </label>
+                  <select
+                    value={filterAccountId}
+                    onChange={(e) => setFilterAccountId(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED] cursor-pointer"
+                  >
+                    <option value="All">All Accounts</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({acc.bankName || 'Cash'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Date range start */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
+
+                {/* Date range end */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
+
+                {/* Min Amount */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Min Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={filterMinAmount}
+                    onChange={(e) => setFilterMinAmount(e.target.value)}
+                    placeholder="Min total"
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
+
+                {/* Max Amount */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Max Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={filterMaxAmount}
+                    onChange={(e) => setFilterMaxAmount(e.target.value)}
+                    placeholder="Max total"
+                    className="w-full px-3 py-1 bg-white border border-[#E5E7EB] text-[#1F2937] text-sm rounded-[6px] focus:outline-none focus:border-[#2F80ED]"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1089,69 +1234,83 @@ export default function Sales() {
                 <table className="min-w-full divide-y divide-[#E5E7EB] text-left text-sm whitespace-nowrap">
                   <thead className="bg-[#F6F8FB] text-[#6B7280] font-semibold text-xs uppercase tracking-wider select-none">
                     <tr>
-                      <th
-                        className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('invoiceNumber');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          Invoice No
-                          {sortField === 'invoiceNumber' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th
-                        className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('date');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          Date
-                          {sortField === 'date' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th
-                        className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('customerName');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          Customer
-                          {sortField === 'customerName' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th
-                        className="px-4 py-3.5 text-right cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('grandTotal');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          Grand Total
-                          {sortField === 'grandTotal' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3.5 text-right">Paid</th>
-                      <th
-                        className="px-4 py-3.5 text-right cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => {
-                          setSortField('remainingAmount');
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        }}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          Remaining
-                          {sortField === 'remainingAmount' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
-                        </div>
-                      </th>
+                      {visibleColumns.includes('invoiceNumber') && (
+                        <th
+                          className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('invoiceNumber');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Invoice No
+                            {sortField === 'invoiceNumber' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('date') && (
+                        <th
+                          className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('date');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Date
+                            {sortField === 'date' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('customerName') && (
+                        <th
+                          className="px-4 py-3.5 cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('customerName');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Customer
+                            {sortField === 'customerName' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('grandTotal') && (
+                        <th
+                          className="px-4 py-3.5 text-right cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('grandTotal');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            Grand Total
+                            {sortField === 'grandTotal' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
+                      {visibleColumns.includes('paidAmount') && (
+                        <th className="px-4 py-3.5 text-right">Paid</th>
+                      )}
+                      {visibleColumns.includes('remainingAmount') && (
+                        <th
+                          className="px-4 py-3.5 text-right cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => {
+                            setSortField('remainingAmount');
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          }}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            Remaining
+                            {sortField === 'remainingAmount' && (sortOrder === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />)}
+                          </div>
+                        </th>
+                      )}
                       <th className="px-4 py-3.5">Payment Method</th>
-                      <th className="px-4 py-3.5 text-center">Status</th>
+                      {visibleColumns.includes('status') && (
+                        <th className="px-4 py-3.5 text-center">Status</th>
+                      )}
                       <th className="px-4 py-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -1176,29 +1335,43 @@ export default function Sales() {
 
                       return (
                         <tr key={s.id} className={`hover:bg-[#F6F8FB]/50 transition-colors ${s.status === 'Cancelled' ? 'opacity-65' : ''}`}>
-                          <td className="px-4 py-4 font-semibold text-[#2F80ED]">{s.invoiceNumber}</td>
-                          <td className="px-4 py-4">{s.date}</td>
-                          <td className="px-4 py-4 font-bold text-gray-800">{s.customerName}</td>
-                          <td className="px-4 py-4 text-right font-semibold text-[#27AE60]">{formatCurrency(s.grandTotal)}</td>
-                          <td className="px-4 py-4 text-right">{formatCurrency(s.paidAmount)}</td>
-                          <td className="px-4 py-4 text-right">
-                            <div className="flex flex-col items-end gap-1">
-                              <span className="font-bold text-gray-700">{formatCurrency(s.remainingAmount)}</span>
-                              <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider ${paymentBadge}`}>
-                                {paymentText}
-                              </span>
-                            </div>
-                          </td>
+                          {visibleColumns.includes('invoiceNumber') && (
+                            <td className="px-4 py-4 font-semibold text-[#2F80ED]">{s.invoiceNumber}</td>
+                          )}
+                          {visibleColumns.includes('date') && (
+                            <td className="px-4 py-4">{s.date}</td>
+                          )}
+                          {visibleColumns.includes('customerName') && (
+                            <td className="px-4 py-4 font-bold text-gray-800">{s.customerName}</td>
+                          )}
+                          {visibleColumns.includes('grandTotal') && (
+                            <td className="px-4 py-4 text-right font-semibold text-[#27AE60]">{formatCurrency(s.grandTotal)}</td>
+                          )}
+                          {visibleColumns.includes('paidAmount') && (
+                            <td className="px-4 py-4 text-right">{formatCurrency(s.paidAmount)}</td>
+                          )}
+                          {visibleColumns.includes('remainingAmount') && (
+                            <td className="px-4 py-4 text-right">
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="font-bold text-gray-700">{formatCurrency(s.remainingAmount)}</span>
+                                <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider ${paymentBadge}`}>
+                                  {paymentText}
+                                </span>
+                              </div>
+                            </td>
+                          )}
                           <td className="px-4 py-4">
                             <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                               {s.paymentMethod}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${statusClass}`}>
-                              {s.status}
-                            </span>
-                          </td>
+                          {visibleColumns.includes('status') && (
+                            <td className="px-4 py-4 text-center">
+                              <span className={`inline-block px-2.5 py-0.5 text-xs font-bold rounded-full select-none ${statusClass}`}>
+                                {s.status}
+                              </span>
+                            </td>
+                          )}
                           <td className="px-4 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
@@ -1876,6 +2049,90 @@ export default function Sales() {
             </div>
           </div>
         </div>
+      )}
+
+      {printPreviewSale && (
+        <PrintPreview
+          title={`Invoice ${printPreviewSale.invoiceNumber}`}
+          htmlContent={`
+            <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4; padding: 20px; color: #1f2937;">
+              <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px;">
+                <div>
+                  <h1 style="font-size: 20px; font-weight: bold; margin: 0; text-transform: uppercase;">${company?.companyName || 'Textile Factory Manager'}</h1>
+                  <p style="margin: 2px 0 0 0; color: #6b7280; font-size: 11px;">${company?.businessName || ''}</p>
+                  <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 10px;">
+                    Address: ${company?.address1 || ''} ${company?.address2 || ''}<br/>
+                    Phone: ${company?.phone || ''} | Email: ${company?.email || ''}
+                  </p>
+                </div>
+                <div style="text-align: right;">
+                  <h2 style="font-size: 18px; font-weight: 900; margin: 0; color: #4b5563; text-transform: uppercase; tracking-wider: 1px;">Invoice</h2>
+                  <div style="margin-top: 5px; font-size: 11px; font-weight: 650; color: #4b5563;">
+                    <strong>Invoice No:</strong> ${printPreviewSale.invoiceNumber}<br/>
+                    <strong>Date:</strong> ${printPreviewSale.date}<br/>
+                    <strong>Status:</strong> <span class="badge badge-active" style="padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; background-color: #d1fae5; color: #065f46;">${printPreviewSale.status}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                <div>
+                  <h3 style="font-size: 10px; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; margin-bottom: 5px;">Billed To:</h3>
+                  <p style="font-size: 12px; font-weight: bold; margin: 0; color: #1f2937;">${printPreviewSale.customerName}</p>
+                </div>
+                <div>
+                  <h3 style="font-size: 10px; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; margin-bottom: 5px;">Payment Details:</h3>
+                  <p style="font-size: 11px; margin: 0; color: #4b5563;">
+                    <strong>Payment Method:</strong> ${printPreviewSale.paymentMethod}<br/>
+                    <strong>Account:</strong> ${printPreviewSale.paymentAccountName || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                <thead>
+                  <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb; font-size: 10px; color: #4b5563; text-transform: uppercase; font-weight: bold;">
+                    <th style="padding: 8px 10px; text-align: left;">SKU</th>
+                    <th style="padding: 8px 10px; text-align: left;">Product</th>
+                    <th style="padding: 8px 10px; text-align: right;">Price</th>
+                    <th style="padding: 8px 10px; text-align: center;">Qty</th>
+                    <th style="padding: 8px 10px; text-align: right;">Discount</th>
+                    <th style="padding: 8px 10px; text-align: right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${printPreviewLineItems.map(item => `
+                    <tr style="border-bottom: 1px solid #f3f4f6; font-size: 11px; color: #374151;">
+                      <td style="padding: 8px 10px; font-weight: bold; color: #2563eb;">${item.productSku}</td>
+                      <td style="padding: 8px 10px; font-weight: bold;">${item.productName}</td>
+                      <td style="padding: 8px 10px; text-align: right;">Rs. ${item.unitPrice.toLocaleString()}</td>
+                      <td style="padding: 8px 10px; text-align: center; font-weight: bold;">${item.quantity.toLocaleString()} ${item.productUnit}</td>
+                      <td style="padding: 8px 10px; text-align: right;">Rs. ${item.discount.toLocaleString()}</td>
+                      <td style="padding: 8px 10px; text-align: right; font-weight: bold; color: #111827;">Rs. ${item.total.toLocaleString()}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+
+              <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
+                <table style="width: 50%; font-size: 11px; border-top: 1px solid #e5e7eb;">
+                  <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 5px 0; color: #6b7280;">Subtotal:</td><td style="padding: 5px 0; text-align: right; font-weight: bold;">Rs. ${printPreviewSale.subtotal.toLocaleString()}</td></tr>
+                  <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 5px 0; color: #6b7280;">Discount:</td><td style="padding: 5px 0; text-align: right; font-weight: bold;">Rs. ${printPreviewSale.discount.toLocaleString()}</td></tr>
+                  <tr style="border-bottom: 1px solid #e5e7eb; font-weight: bold; font-size: 12px;"><td style="padding: 6px 0; color: #111827;">Grand Total:</td><td style="padding: 6px 0; text-align: right; color: #111827;">Rs. ${printPreviewSale.grandTotal.toLocaleString()}</td></tr>
+                  <tr style="border-bottom: 1px solid #f3f4f6; color: #15803d;"><td style="padding: 5px 0;">Paid Amount:</td><td style="padding: 5px 0; text-align: right; font-weight: bold;">Rs. ${printPreviewSale.paidAmount.toLocaleString()}</td></tr>
+                  <tr style="color: #b91c1c; font-weight: bold;"><td style="padding: 5px 0;">Balance Due:</td><td style="padding: 5px 0; text-align: right; font-weight: 900;">Rs. ${printPreviewSale.remainingAmount.toLocaleString()}</td></tr>
+                </table>
+              </div>
+
+              ${printPreviewSale.remarks ? `
+                <div style="border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; font-size: 10px; color: #6b7280; font-style: italic;">
+                  <strong>Remarks:</strong> ${printPreviewSale.remarks}
+                </div>
+              ` : ''}
+            </div>
+          `}
+          onClose={() => setPrintPreviewSale(null)}
+        />
       )}
     </div>
   );

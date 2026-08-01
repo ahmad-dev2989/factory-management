@@ -18,6 +18,7 @@ import {
   Package,
   Calendar
 } from 'lucide-react';
+import { SidebarToggle } from '../components/Sidebar';
 
 interface CompanyItem {
   companyName: string;
@@ -978,9 +979,7 @@ export default function Reports() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
-            LB
-          </div>
+          <SidebarToggle />
           <span className="font-semibold text-lg tracking-wide">Factory App</span>
         </div>
         <div className="flex items-center gap-5">

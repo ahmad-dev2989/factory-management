@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, Bell, Mail, LogOut, ChevronRight, Save, RotateCcw, FolderOpen, DatabaseBackup, DownloadCloud, Info, ArrowLeft } from 'lucide-react';
+import { SidebarToggle } from '../components/Sidebar';
 
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
     <div
@@ -136,9 +137,7 @@ export default function SystemPreferences() {
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
-                        LB
-                    </div>
+                    <SidebarToggle />
                     <span className="font-semibold text-lg tracking-wide">
                         Factory App
                     </span>

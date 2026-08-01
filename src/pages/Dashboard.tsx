@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Database
 } from 'lucide-react';
+import { SidebarToggle } from '../components/Sidebar';
 
 interface SummaryStats {
   todaySales: number;
@@ -391,9 +392,7 @@ export default function Dashboard() {
       {/* Header */}
       <header className="h-[60px] bg-[#2F80ED] text-white flex items-center justify-between px-5 shrink-0 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="bg-white/15 px-2.5 py-1 rounded text-xs font-bold tracking-widest border border-white/20 select-none">
-            LB
-          </div>
+          <SidebarToggle />
           <span className="font-semibold text-lg tracking-wide">Factory App</span>
         </div>
         
