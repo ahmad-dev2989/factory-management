@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { execSync } from 'node:child_process';
 import { initializeDatabase, closeDatabase } from './database/database.js';
 import { registerDatabaseIPCHandlers } from './database/ipc.js';
 import { registerStorageIPCHandlers } from './storage/storageIpc.js';
@@ -177,6 +178,34 @@ ipcMain.handle('get-app-version', async () => {
   } catch (err) {
     console.error('[Main] Failed to get app version:', err);
     return '1.0.0';
+  }
+});
+
+ipcMain.handle('get-wifi-ssid', async () => {
+  try {
+    if (process.platform === 'win32') {
+      const output = execSync('netsh wlan show interfaces', { encoding: 'utf8', timeout: 5000 });
+      const match = output.match(/^\s*SSID\s*:\s*(.+)$/m);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    } else if (process.platform === 'darwin') {
+      const output = execSync('/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -I', { encoding: 'utf8', timeout: 5000 });
+      const match = output.match(/^\s*SSID:\s*(.+)$/m);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    } else {
+      const output = execSync('nmcli -t -f active,ssid dev wifi', { encoding: 'utf8', timeout: 5000 });
+      const match = output.match(/^yes:(.+)$/m);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error('[Main] Failed to get WiFi SSID:', err);
+    return null;
   }
 });
 

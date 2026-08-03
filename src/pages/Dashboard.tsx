@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Wifi,
   Bell,
   Mail,
   LogOut,
@@ -15,6 +14,7 @@ import {
   AlertTriangle,
   Database
 } from 'lucide-react';
+import WifiStatus from '../components/WifiStatus';
 import { SidebarToggle } from '../components/Sidebar';
 
 interface SummaryStats {
@@ -411,9 +411,7 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-4 text-white/80 border-r border-white/20 pr-4">
-            <button className="hover:text-white p-1 rounded transition-colors focus:outline-none" title="Network Connection">
-              <Wifi className="w-[18px] h-[18px]" />
-            </button>
+            <WifiStatus />
             <button className="hover:text-white p-1 rounded transition-colors focus:outline-none relative" title="Notifications">
               <Bell className="w-[18px] h-[18px]" />
               <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-red-400 rounded-full"></span>

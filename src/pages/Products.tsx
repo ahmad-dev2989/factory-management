@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Wifi,
   Bell,
   Mail,
   LogOut,
@@ -20,6 +19,7 @@ import {
   ChevronDown,
   Package
 } from 'lucide-react';
+import WifiStatus from '../components/WifiStatus';
 import { useNotification } from '../context/NotificationContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { SidebarToggle } from '../components/Sidebar';
@@ -944,12 +944,7 @@ export default function Products() {
         </div>
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-4 text-white/80 border-r border-white/20 pr-4">
-            <button
-              className="hover:text-white p-1 rounded transition-colors cursor-pointer focus:outline-none"
-              title="Network Connection"
-            >
-              <Wifi className="w-[18px] h-[18px]" />
-            </button>
+            <WifiStatus />
             <button
               className="hover:text-white p-1 rounded transition-colors cursor-pointer focus:outline-none relative"
               title="Notifications"
